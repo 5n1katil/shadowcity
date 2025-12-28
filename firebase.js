@@ -1,25 +1,22 @@
-// firebase.js — Shadow City v0.4 (GitHub Pages + Secure Rules uyumlu)
-
-// 🔹 Firebase CDN imports (npm DEĞİL)
+// firebase.js (CDN, modular v9)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth,
   signInAnonymously,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
 import {
   getDatabase,
   ref,
   get,
   set,
   update,
-  push,
   onValue,
-  off,
-  onDisconnect
+  onDisconnect,
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-// 🔐 SENİN PROJENİN FIREBASE CONFIG'I
+// --- CONFIG (senin projenden) ---
 const firebaseConfig = {
   apiKey: "AIzaSyA2AKJHdcamzFNgUZBbiKPJL8hUG1pNVRI",
   authDomain: "shadowcity-58430.firebaseapp.com",
@@ -31,110 +28,86 @@ const firebaseConfig = {
   measurementId: "G-16ZY5Z593E"
 };
 
-// 🔧 Init
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
-export { ref, get, set, update, push, onValue, off, onDisconnect };
+export const auth = getAuth(app);
 
-/**
- * 🔑 Anonymous Auth (zorunlu)
- */
-export function ensureAuth() {
-  return new Promise((resolve, reject) => {
+// --- Auth ---
+let authReady = null;
+export function ensureAuth(){
+  if (authReady) return authReady;
+  authReady = new Promise((resolve, reject) => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      try {
-        if (!user) {
-          await signInAnonymously(auth);
-          return;
-        }
+      try{
+        if (user){ unsub(); resolve(user); return; }
+        const cred = await signInAnonymously(auth);
         unsub();
-        resolve(user);
-      } catch (e) {
-        reject(e);
-      }
+        resolve(cred.user);
+      }catch(e){ reject(e); }
     });
   });
+  return authReady;
 }
 
-/**
- * 📌 Refs
- */
-export const roomRef = (roomCode) => ref(db, `rooms/${roomCode}`);
-export const playersRef = (roomCode) => ref(db, `rooms/${roomCode}/players`);
-export const playerRef = (roomCode, uid) => ref(db, `rooms/${roomCode}/players/${uid}`);
-export const settingsRef = (roomCode) => ref(db, `rooms/${roomCode}/settings`);
-export const stateRef = (roomCode) => ref(db, `rooms/${roomCode}/state`);
-export const myRoleRef = (roomCode, uid) => ref(db, `rooms/${roomCode}/secret/roles/${uid}`);
-export const votingVotesRef = (roomCode) => ref(db, `rooms/${roomCode}/voting/votes`);
-export const nightActionsRef = (roomCode) => ref(db, `rooms/${roomCode}/night/actions`);
-export const nightResultsRef = (roomCode) => ref(db, `rooms/${roomCode}/night/results`);
-export const voteStartRequestsRef = (roomCode) => ref(db, `rooms/${roomCode}/requests/voteStart`);
-export const fastNightRequestsRef = (roomCode) => ref(db, `rooms/${roomCode}/requests/fastNight`);
-export const logRef = (roomCode) => ref(db, `rooms/${roomCode}/log/events`);
-
-/**
- * 👂 Listener helper
- */
-export function listen(r, cb) {
-  return onValue(r, (snap) => cb(snap.val()));
+// --- Helpers ---
+export function listen(r, cb){
+  const off = onValue(r, (snap) => cb(snap.exists()? snap.val() : null));
+  return off;
 }
 
-/**
- * 🧍 Oyuncu olarak odaya katıl
- */
-export async function joinRoomAsPlayer(roomCode, name) {
-  await ensureAuth();
-  const uid = auth.currentUser.uid;
+export function roomRef(code){ return ref(db, `rooms/${code}`); }
+export function settingsRef(code){ return ref(db, `rooms/${code}/settings`); }
+export function stateRef(code){ return ref(db, `rooms/${code}/state`); }
+export function playersRef(code){ return ref(db, `rooms/${code}/players`); }
+export function playerRef(code, uid){ return ref(db, `rooms/${code}/players/${uid}`); }
+export function secretRoleRef(code, uid){ return ref(db, `rooms/${code}/secret/roles/${uid}`); }
 
-  await set(playerRef(roomCode, uid), {
-    name: String(name || "Player").slice(0, 20),
-    alive: true,
-    joinedAt: Date.now(),
-    doctorSelfProtectUsed: 0
-  });
+export function requestsVoteRef(code){ return ref(db, `rooms/${code}/requests/voteStart`); }
+export function requestVoteMeRef(code, uid){ return ref(db, `rooms/${code}/requests/voteStart/${uid}`); }
+export function requestsFastNightRef(code){ return ref(db, `rooms/${code}/requests/fastNight`); }
+export function requestFastNightMeRef(code, uid){ return ref(db, `rooms/${code}/requests/fastNight/${uid}`); }
 
-  return uid;
+export function votingVotesRef(code){ return ref(db, `rooms/${code}/voting/votes`); }
+export function votingVoteMeRef(code, uid){ return ref(db, `rooms/${code}/voting/votes/${uid}`); }
+
+export function nightActionsKillRef(code){ return ref(db, `rooms/${code}/night/actions/kill`); }
+export function nightActionsProtectRef(code){ return ref(db, `rooms/${code}/night/actions/protect`); }
+export function nightActionsInvestigateRef(code){ return ref(db, `rooms/${code}/night/actions/investigate`); }
+
+export function nightActionMeRef(code, kind, uid){
+  return ref(db, `rooms/${code}/night/actions/${kind}/${uid}`);
 }
 
-/**
- * 🎥 Host olarak odaya katıl
- * ⚠️ Çok kritik: rules gereği host da players altında olmalı
- */
-export async function joinRoomAsHost(roomCode, hostName = "HOST") {
-  await ensureAuth();
-  const uid = auth.currentUser.uid;
+export function generateRoomCode(len=6){
+  const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s="";
+  for(let i=0;i<len;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
 
-  await set(playerRef(roomCode, uid), {
-    name: hostName,
+// Join functions
+export async function joinRoomAsHost(code, hostName){
+  const user = await ensureAuth();
+  await set(playerRef(code, user.uid), {
+    name: hostName || "HOST",
+    isHost: true,
     alive: false,
-    joinedAt: Date.now(),
-    isHost: true
+    joinedAt: Date.now()
   });
-
-  return uid;
+  return user;
 }
 
-/**
- * 🏷️ Room code üret
- */
-export function generateRoomCode(len = 6) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let out = "";
-  for (let i = 0; i < len; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-}
-
-/**
- * 📝 Log (host kullanır)
- */
-export async function logEvent(roomCode, type, text) {
-  const e = push(logRef(roomCode));
-  await set(e, {
-    t: Date.now(),
-    type,
-    text
+export async function joinRoomAsPlayer(code, playerName){
+  const user = await ensureAuth();
+  await set(playerRef(code, user.uid), {
+    name: playerName || "Player",
+    isHost: false,
+    alive: true,
+    doctorSelfProtectUsed: 0,
+    joinedAt: Date.now()
   });
+  return user;
 }
+
+// Export core db funcs you already use
+export { ref, get, set, update, onDisconnect };
