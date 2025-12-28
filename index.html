@@ -1,85 +1,34 @@
-{
-  "rules": {
-    ".read": false,
-    ".write": false,
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shadow City</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__title">SHADOW CITY</div>
+        <div class="brand__subtitle">Noir / Werewolf-style party game</div>
+      </div>
+    </header>
 
-    "rooms": {
-      "$roomCode": {
-        // Oda içindeki verileri okuyabilmek için:
-        // kullanıcı o odada players altında kayıtlı olmalı (host da kayıtlı olacak)
-        ".read": "auth != null && data.child('players').child(auth.uid).exists()",
-        ".write": "auth != null && data.child('players').child(auth.uid).exists()",
+    <main class="card stack">
+      <h1 class="h1">Nasıl gireceksin?</h1>
+      <p class="muted">TV/PC ile moderatör ol veya telefondan oyuncu olarak katıl.</p>
 
-        "settings": {
-          // settings sadece host tarafından yazılır (oda kurulumu + ayarlar)
-          ".write": "auth != null && data.parent().child('settings').child('creatorUid').val() === auth.uid"
-        },
+      <div class="grid2">
+        <a class="btn btn-primary" href="./host.html">MODERATÖR (HOST)</a>
+        <a class="btn btn-ghost" href="./player.html">OYUNCU (PLAYER)</a>
+      </div>
 
-        "players": {
-          "$uid": {
-            // Her oyuncu kendi kaydını oluşturabilir/ güncelleyebilir
-            ".write": "auth != null && $uid === auth.uid",
-            ".read": "auth != null && data.parent().child(auth.uid).exists()"
-          }
-        },
-
-        "secret": {
-          "roles": {
-            "$uid": {
-              // Oyuncu sadece kendi rolünü okur
-              ".read": "auth != null && $uid === auth.uid",
-              // Rolleri sadece host yazar
-              ".write": "auth != null && data.parent().parent().parent().child('settings').child('creatorUid').val() === auth.uid"
-            }
-          }
-        },
-
-        "state": {
-          // faz/süre yönetimi host
-          ".write": "auth != null && data.parent().child('settings').child('creatorUid').val() === auth.uid"
-        },
-
-        "day": {
-          "voteCall": {
-            "requests": {
-              "$uid": {
-                // oylama çağrısı: herkes kendi isteğini yazabilir
-                ".write": "auth != null && $uid === auth.uid"
-              }
-            }
-          }
-        },
-
-        "voting": {
-          "votes": {
-            "$uid": {
-              // oy: herkes kendi oyunu yazar
-              ".write": "auth != null && $uid === auth.uid"
-            }
-          },
-          // sonucu host yazar
-          "result": {
-            ".write": "auth != null && data.parent().parent().child('settings').child('creatorUid').val() === auth.uid"
-          }
-        },
-
-        "night": {
-          "actions": {
-            // gece aksiyonlarını herkes yazamasın:
-            // burada basit tutuyoruz: host yazabilir + oyuncular kendi rol aksiyonunu yazacak (bir sonraki patchte daha da sıkılaştırırız)
-            ".write": "auth != null && data.parent().parent().child('players').child(auth.uid).exists()"
-          },
-          "results": {
-            // gece sonuçlarını host yazar, oyuncular okur
-            ".write": "auth != null && data.parent().parent().child('settings').child('creatorUid').val() === auth.uid"
-          }
-        },
-
-        "log": {
-          // log sadece host yazar, herkes okur
-          ".write": "auth != null && data.parent().child('settings').child('creatorUid').val() === auth.uid"
-        }
-      }
-    }
-  }
-}
+      <div class="hr"></div>
+      <p class="tiny muted">
+        İpucu: Host ekranda oda oluşturur → kodu oyunculara verir → herkes telefondan katılır.
+      </p>
+    </main>
+  </div>
+</body>
+</html>
