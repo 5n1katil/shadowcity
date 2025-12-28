@@ -1,1 +1,371 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shadow City — Player</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__title">SHADOW CITY — PLAYER</div>
+        <div class="brand__subtitle">Telefondan bağlan</div>
+      </div>
+      <a class="pill" href="./index.html">↩</a>
+    </header>
 
+    <main class="card stack" id="joinCard">
+      <h2 class="h2">Odaya Katıl</h2>
+      <div class="row">
+        <div>
+          <label>Oda Kodu</label>
+          <input id="roomCode" placeholder="ABC123" autocomplete="off" />
+        </div>
+        <div>
+          <label>İsmin</label>
+          <input id="playerName" placeholder="Çisem" autocomplete="off" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btnJoin">KATIL</button>
+      <div class="tiny muted" id="joinHint">Host’tan oda kodunu al.</div>
+    </main>
+
+    <main class="card stack" id="gameCard" style="display:none;">
+      <div class="row">
+        <div class="pill">Oda: <strong id="roomPill">—</strong></div>
+        <div class="pill">Durum: <strong id="phasePill">—</strong></div>
+      </div>
+
+      <div class="notice">
+        <div class="muted tiny">Rolün</div>
+        <div class="big" id="roleText">—</div>
+        <div class="muted" id="roleHelp">Rol dağıtılmasını bekle.</div>
+        <div class="hr"></div>
+        <div class="tiny muted">Gizli Mesaj</div>
+        <div id="inboxText">—</div>
+      </div>
+
+      <div class="stack" id="actionArea" style="display:none;">
+        <h2 class="h2" id="actionTitle">Aksiyon</h2>
+        <div>
+          <label>Hedef</label>
+          <select id="targetSelect"></select>
+          <div class="tiny muted" id="selfProtectHint" style="display:none;">
+            Doktor kendini sadece 1 kez koruyabilir.
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btnSubmitAction">GÖNDER</button>
+        <div class="tiny muted" id="actionHint">Host’un yönergelerini takip et.</div>
+      </div>
+
+      <div class="stack" id="voteArea" style="display:none;">
+        <h2 class="h2">Oylama</h2>
+        <div>
+          <label>Oyunucu seç (istersen SKIP)</label>
+          <select id="voteSelect"></select>
+        </div>
+        <button class="btn btn-primary" id="btnSubmitVote">OY VER</button>
+        <button class="btn btn-ghost" id="btnCallVote">OYLAMA İSTİYORUM</button>
+        <div class="tiny muted">Oylama zorunlu değil; çoğunluk isterse başlar.</div>
+      </div>
+
+      <div class="notice" id="publicTextBox">
+        <strong>Host:</strong>
+        <div class="muted" id="publicText">—</div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import {
+      ensureAuth,
+      joinRoomAsPlayer,
+      playersRef,
+      playerRef,
+      stateRef,
+      settingsRef,
+      myRoleRef,
+      nightActionsRef,
+      votingVotesRef,
+      voteCallRequestsRef,
+      listen,
+      set,
+      update,
+      get
+    } from "./firebase.js";
+
+    import { ROLES, ROLE_LABEL_TR, aliveUids } from "./shared.js";
+
+    let roomCode = null;
+    let myUid = null;
+
+    let players = {};
+    let state = {};
+    let settings = {};
+    let myRoleObj = null;
+
+    const el = (id) => document.getElementById(id);
+
+    function escapeHtml(s){
+      return String(s || "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+    }
+
+    function myPlayer(){
+      return players?.[myUid] || null;
+    }
+
+    function buildTargetOptions(includeSelf){
+      const alive = Object.entries(players || {})
+        .filter(([uid, p]) => p && !p.isHost && p.alive);
+
+      const me = myUid;
+      const opts = [];
+      for (const [uid, p] of alive) {
+        if (!includeSelf && uid === me) continue;
+        opts.push({ uid, name: p.name || "Oyuncu" });
+      }
+      return opts;
+    }
+
+    function renderTargets(selectEl, includeSelf=false){
+      const opts = buildTargetOptions(includeSelf);
+      selectEl.innerHTML = opts.map(o => `<option value="${o.uid}">${escapeHtml(o.name)}</option>`).join("");
+    }
+
+    function renderVoteSelect(){
+      const alive = Object.entries(players || {})
+        .filter(([uid, p]) => p && !p.isHost && p.alive);
+
+      const options = [`<option value="SKIP">SKIP (Kimse)</option>`]
+        .concat(alive.map(([uid, p]) => `<option value="${uid}">${escapeHtml(p.name || "Oyuncu")}</option>`));
+      el("voteSelect").innerHTML = options.join("");
+    }
+
+    function updateUI(){
+      el("roomPill").textContent = roomCode || "—";
+      el("phasePill").textContent = state?.phase || "—";
+      el("publicText").textContent = state?.hostText || "—";
+
+      const role = myRoleObj?.role || null;
+      el("roleText").textContent = role ? (ROLE_LABEL_TR[role] || role) : "—";
+      el("inboxText").textContent = myRoleObj?.inbox?.msg || "—";
+
+      const me = myPlayer();
+      if (!me) return;
+
+      // visibility
+      el("actionArea").style.display = "none";
+      el("voteArea").style.display = "none";
+
+      // dead => no actions
+      if (!me.alive) {
+        el("roleHelp").textContent = "Elendin. Oyunu izleyebilirsin.";
+        return;
+      }
+
+      // phase-specific
+      if (state?.phase === "night") {
+        el("voteArea").style.display = "none";
+        const stage = state?.nightStage;
+
+        if (!role) {
+          el("roleHelp").textContent = "Rol dağıtılmadı. Bekle.";
+          return;
+        }
+
+        // only matching role acts
+        const actionArea = el("actionArea");
+        actionArea.style.display = "block";
+
+        const btn = el("btnSubmitAction");
+        btn.disabled = false;
+
+        el("selfProtectHint").style.display = "none";
+
+        if (stage === "kill") {
+          el("actionTitle").textContent = "Kurban Seç";
+          el("roleHelp").textContent = "Host katilleri uyandırınca seçim yap.";
+          if (role !== ROLES.KILLER) {
+            btn.disabled = true;
+            el("actionHint").textContent = "Uyuyorsun…";
+          } else {
+            renderTargets(el("targetSelect"), false);
+            el("actionHint").textContent = "Kimse görmüyor. Seç ve gönder.";
+          }
+        }
+
+        if (stage === "protect") {
+          el("actionTitle").textContent = "Koruma Seç";
+          el("roleHelp").textContent = "Doktorsan birini koru.";
+          if (role !== ROLES.DOCTOR) {
+            btn.disabled = true;
+            el("actionHint").textContent = "Uyuyorsun…";
+          } else {
+            // self protect only once
+            const used = Number(me.doctorSelfProtectUsed || 0);
+            const canSelf = used < 1;
+            el("selfProtectHint").style.display = "block";
+            renderTargets(el("targetSelect"), canSelf);
+            el("actionHint").textContent = canSelf
+              ? "İstersen kendini 1 kez koruyabilirsin."
+              : "Kendini koruma hakkını kullandın.";
+          }
+        }
+
+        if (stage === "investigate") {
+          el("actionTitle").textContent = "Sorgula";
+          el("roleHelp").textContent = "Dedektifsen birini sorgula.";
+          if (role !== ROLES.DETECTIVE) {
+            btn.disabled = true;
+            el("actionHint").textContent = "Uyuyorsun…";
+          } else {
+            renderTargets(el("targetSelect"), false);
+            el("actionHint").textContent = "Seç ve gönder. Sonuç gizli mesaj olarak gelir.";
+          }
+        }
+      }
+
+      if (state?.phase === "voting") {
+        el("actionArea").style.display = "none";
+        el("voteArea").style.display = "block";
+        renderVoteSelect();
+      }
+
+      if (state?.phase === "discussion" || state?.phase === "waiting") {
+        el("actionArea").style.display = "none";
+        el("voteArea").style.display = "block";
+        renderVoteSelect();
+        el("roleHelp").textContent = "Tartışma zamanı. Host isterse oylama açar.";
+      }
+
+      if (state?.phase === "ended") {
+        el("actionArea").style.display = "none";
+        el("voteArea").style.display = "none";
+        el("roleHelp").textContent = "Oyun bitti.";
+      }
+    }
+
+    async function join(){
+      roomCode = el("roomCode").value.trim().toUpperCase();
+      const name = el("playerName").value.trim();
+
+      if (!roomCode || roomCode.length < 4) {
+        el("joinHint").textContent = "Geçerli bir oda kodu gir.";
+        return;
+      }
+      if (!name) {
+        el("joinHint").textContent = "İsim gir.";
+        return;
+      }
+
+      await ensureAuth();
+      myUid = (await ensureAuth()).uid;
+
+      // join as player (creates players/{uid})
+      await joinRoomAsPlayer(roomCode, name);
+
+      // switch UI
+      el("joinCard").style.display = "none";
+      el("gameCard").style.display = "block";
+
+      // listeners
+      listen(playersRef(roomCode), (val) => { players = val || {}; updateUI(); });
+      listen(stateRef(roomCode), (st) => { state = st || {}; updateUI(); });
+      listen(settingsRef(roomCode), (s) => { settings = s || {}; updateUI(); });
+      listen(myRoleRef(roomCode, myUid), (r) => { myRoleObj = r || null; updateUI(); });
+
+      updateUI();
+    }
+
+    async function submitNightAction(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
+
+      const role = myRoleObj?.role;
+      const stage = state?.nightStage;
+      const targetUid = el("targetSelect").value;
+
+      if (!role || !stage || !targetUid) return;
+
+      // write to night/actions/{stage}/{uid} = targetUid
+      await set(ref(window.db, `rooms/${roomCode}/night/actions/${stage}/${myUid}`), targetUid);
+      el("actionHint").textContent = "Gönderildi. Bekle…";
+      el("btnSubmitAction").disabled = true;
+    }
+
+    async function submitVote(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
+
+      const choice = el("voteSelect").value;
+      await set(ref(window.db, `rooms/${roomCode}/voting/votes/${myUid}`), choice);
+      el("btnSubmitVote").disabled = true;
+    }
+
+    async function callVote(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
+      await set(ref(window.db, `rooms/${roomCode}/day/voteCall/requests/${myUid}`), true);
+      el("btnCallVote").disabled = true;
+    }
+
+    // IMPORTANT: player.html içinde window.db yoksa ref(...) patlar.
+    // firebase.js export db ile çözelim:
+    async function dbRef(path){
+      const { db } = await import("./firebase.js");
+      const { ref } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js");
+      return ref(db, path);
+    }
+
+    async function submitNightAction_SAFE(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
+
+      const role = myRoleObj?.role;
+      const stage = state?.nightStage;
+      const targetUid = el("targetSelect").value;
+
+      if (!role || !stage || !targetUid) return;
+
+      const r = await dbRef(`rooms/${roomCode}/night/actions/${stage}/${myUid}`);
+      await set(r, targetUid);
+
+      el("actionHint").textContent = "Gönderildi. Bekle…";
+      el("btnSubmitAction").disabled = true;
+    }
+
+    async function submitVote_SAFE(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
+
+      const choice = el("voteSelect").value;
+      const r = await dbRef(`rooms/${roomCode}/voting/votes/${myUid}`);
+      await set(r, choice);
+      el("btnSubmitVote").disabled = true;
+    }
+
+    async function callVote_SAFE(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
+
+      const r = await dbRef(`rooms/${roomCode}/day/voteCall/requests/${myUid}`);
+      await set(r, true);
+      el("btnCallVote").disabled = true;
+    }
+
+    el("btnJoin").addEventListener("click", join);
+    el("btnSubmitAction").addEventListener("click", submitNightAction_SAFE);
+    el("btnSubmitVote").addEventListener("click", submitVote_SAFE);
+    el("btnCallVote").addEventListener("click", callVote_SAFE);
+
+    ensureAuth();
+  </script>
+</body>
+</html>
