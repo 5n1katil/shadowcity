@@ -15,6 +15,7 @@ import {
   update,
   push,
   onValue,
+  off,
   onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
@@ -34,6 +35,7 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
+export { ref, get, set, update, push, onValue, off, onDisconnect };
 
 /**
  * 🔑 Anonymous Auth (zorunlu)
