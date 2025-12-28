@@ -1,34 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Shadow City</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#0b0d14;color:#e9ecff}
+    .wrap{max-width:900px;margin:0 auto;padding:28px}
+    .card{background:#12172a;border:1px solid #2a3358;border-radius:14px;padding:18px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    a.btn{display:inline-block;padding:12px 14px;border-radius:12px;border:1px solid #33406b;background:#192041;color:#e9ecff;text-decoration:none}
+    a.btn:hover{filter:brightness(1.08)}
+    .muted{opacity:.75}
+    h1{margin:0 0 8px 0;letter-spacing:.08em}
+  </style>
 </head>
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand__title">SHADOW CITY</div>
-        <div class="brand__subtitle">Noir / Werewolf-style party game</div>
+  <div class="wrap">
+    <div class="card">
+      <h1>SHADOW CITY</h1>
+      <div class="muted">Basit, otomatik akışlı “werewolf” tarzı oyun.</div>
+      <div style="height:12px"></div>
+      <div class="row">
+        <a class="btn" href="./host.html">HOST (TV/PC)</a>
+        <a class="btn" href="./player.html">PLAYER (Telefon)</a>
       </div>
-    </header>
-
-    <main class="card stack">
-      <h1 class="h1">Nasıl gireceksin?</h1>
-      <p class="muted">TV/PC ile moderatör ol veya telefondan oyuncu olarak katıl.</p>
-
-      <div class="grid2">
-        <a class="btn btn-primary" href="./host.html">MODERATÖR (HOST)</a>
-        <a class="btn btn-ghost" href="./player.html">OYUNCU (PLAYER)</a>
-      </div>
-
-      <div class="hr"></div>
-      <p class="tiny muted">
-        İpucu: Host ekranda oda oluşturur → kodu oyunculara verir → herkes telefondan katılır.
-      </p>
-    </main>
+    </div>
   </div>
 </body>
 </html>
