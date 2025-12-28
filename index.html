@@ -3,81 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gölge Şehir - Prototip</title>
+    <title>Gölge Şehir - v0.3</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0a0a2a; /* Koyu Mavi Arka Plan */
-            --card-bg: rgba(20, 20, 50, 0.8); /* Yarı Saydam Kart Rengi */
-            --neon-blue: #00f7ff; /* Neon Mavi */
-            --neon-purple: #bc13fe; /* Neon Mor */
-            --text-color: #e0e0ff; /* Açık Mavi/Beyaz Metin */
+            --bg-color: #050510;
+            --card-bg: rgba(20, 20, 40, 0.9);
+            --neon-blue: #00f7ff;
+            --neon-purple: #bc13fe;
+            --neon-red: #ff3333;
+            --text-color: #e0e0ff;
             --font-family: 'Montserrat', sans-serif;
         }
 
         body {
             font-family: var(--font-family);
-            background: linear-gradient(135deg, #050510 0%, var(--bg-color) 100%);
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
             color: var(--text-color);
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
-            padding: 30px;
+            padding: 20px;
             min-height: 100vh;
-            box-sizing: border-box;
         }
 
-        /* HOST EKRANI STİLLERİ */
+        /* HOST EKRANI */
         #host-screen {
             width: 90%;
             max-width: 800px;
-            border: 3px solid var(--neon-blue);
+            border: 2px solid var(--neon-blue);
             padding: 30px;
             text-align: center;
             margin-bottom: 40px;
-            background-color: rgba(0, 0, 20, 0.9);
-            box-shadow: 0 0 25px rgba(0, 247, 255, 0.3), inset 0 0 15px rgba(0, 247, 255, 0.1);
+            background-color: rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 20px rgba(0, 247, 255, 0.2);
             border-radius: 15px;
+            position: relative;
+            overflow: hidden;
         }
-        h1 {
-            color: var(--neon-blue);
-            margin: 0 0 20px 0;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            font-size: 3.5em;
-            text-shadow: 0 0 15px var(--neon-blue);
+        
+        /* Host Arka Plan Efekti */
+        #host-screen::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 5px;
+            background: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+            animation: scanline 3s infinite linear;
         }
-        #status-text { font-size: 1.5em; margin: 25px 0; color: var(--text-color); }
-        #timer { font-size: 4em; font-weight: bold; color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple); }
 
-        /* BUTON STİLİ */
-        .main-btn, .action-btn {
-            padding: 15px 30px;
-            font-size: 1.3em;
+        @keyframes scanline {
+            0% { top: 0; opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        h1 {
+            color: #fff;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        #status-text { font-size: 1.4em; margin: 20px 0; color: #aaa; min-height: 1.5em;}
+        #timer { font-size: 3.5em; font-weight: bold; color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple); }
+
+        .main-btn {
+            padding: 15px 40px;
+            font-size: 1.2em;
             font-weight: bold;
             cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
+            border: 2px solid var(--neon-purple);
+            background: transparent;
+            color: var(--neon-purple);
+            border-radius: 5px;
+            transition: 0.3s;
+            box-shadow: 0 0 10px var(--neon-purple);
             font-family: var(--font-family);
         }
-        .main-btn {
-            background-color: transparent;
-            border: 2px solid var(--neon-blue);
-            color: var(--neon-blue);
-            box-shadow: 0 0 10px var(--neon-blue);
-        }
-        .main-btn:hover {
-            background-color: var(--neon-blue);
-            color: #000;
-            box-shadow: 0 0 20px var(--neon-blue);
-        }
+        .main-btn:hover { background: var(--neon-purple); color: #fff; box-shadow: 0 0 25px var(--neon-purple); }
 
-        /* OYUNCU ALANI SİMÜLASYONU */
+        /* OYUNCU ALANI */
         .players-container {
             display: flex;
-            gap: 30px;
+            gap: 20px;
             width: 100%;
             max-width: 1200px;
             justify-content: center;
@@ -85,37 +96,79 @@
         }
 
         .player-device {
-            width: 320px;
-            height: 550px;
-            border: 2px solid var(--neon-purple);
+            width: 300px;
+            height: 520px; /* Telefon oranı */
+            border: 1px solid #444;
             border-radius: 20px;
             background-color: var(--card-bg);
-            color: var(--text-color);
             display: flex;
             flex-direction: column;
-            padding: 25px;
+            padding: 20px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
-            backdrop-filter: blur(5px);
+            transition: transform 0.3s;
         }
 
-        .player-device h3 {
-            font-size: 1.8em;
-            margin-bottom: 15px;
-            color: var(--neon-blue);
+        /* Rol Renkleri */
+        .device-killer { border-color: var(--neon-red); box-shadow: 0 0 15px rgba(255, 51, 51, 0.2); }
+        .device-detective { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 247, 255, 0.2); }
+        .device-citizen { border-color: #aaa; }
+
+        .role-badge {
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+            align-self: flex-start;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .player-device p {
+        
+        .badge-killer { background: var(--neon-red); color: #000; box-shadow: 0 0 10px var(--neon-red); }
+        .badge-detective { background: var(--neon-blue); color: #000; box-shadow: 0 0 10px var(--neon-blue); }
+        .badge-citizen { background: #555; color: #ddd; }
+
+        h3 { font-size: 1.6em; margin-bottom: 10px; color: #fff; }
+        p { font-size: 1em; color: #ccc; line-height: 1.4; }
+
+        /* Form Elemanları */
+        select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            background-color: rgba(0,0,0,0.6);
+            border: 1px solid #666;
+            color: #fff;
+            font-size: 1em;
+            border-radius: 5px;
+            font-family: var(--font-family);
+        }
+        
+        .action-btn {
+            margin-top: auto;
+            padding: 15px;
+            border: none;
+            color: white;
             font-size: 1.1em;
-            line-height: 1.4;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: 0.3s;
         }
+        .btn-kill { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
+        .btn-investigate { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
+        .btn-kill:hover:not(:disabled) { background: #ff0000; box-shadow: 0 0 20px var(--neon-red); }
+        .btn-investigate:hover:not(:disabled) { background: #00d4ff; box-shadow: 0 0 20px var(--neon-blue); }
+        .action-btn:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; }
 
-        /* KARARTMA PERDESİ (GECE MODU) */
-        .blackout-curtain {
+        .log-area { margin-top: 15px; font-size: 0.9em; color: #888; min-height: 20px; }
+
+        /* KARARTMA PERDESİ */
+        .blackout {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #000;
-            color: var(--text-color);
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -123,217 +176,242 @@
             text-align: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.8s ease-in-out;
+            transition: opacity 0.8s;
         }
-        .blackout-curtain div {
-            font-size: 2em;
-            color: var(--neon-purple);
-            text-shadow: 0 0 10px var(--neon-purple);
-        }
-        .active-blackout { opacity: 1; pointer-events: all; }
+        .blackout.active { opacity: 1; pointer-events: all; }
+        .blackout div { font-size: 1.5em; color: #555; letter-spacing: 2px; }
 
-        .role-badge {
-            background: linear-gradient(45deg, var(--neon-purple), var(--neon-blue));
-            color: #fff;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 1em;
-            font-weight: bold;
-            align-self: flex-start;
-            margin-bottom: 20px;
-            box-shadow: 0 0 10px rgba(0, 247, 255, 0.3);
-        }
-        
-        select {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 20px;
-            background-color: rgba(0,0,0,0.5);
-            border: 2px solid var(--neon-blue);
-            color: var(--text-color);
-            font-size: 1.1em;
-            border-radius: 8px;
-            font-family: var(--font-family);
-        }
-        
-        .action-btn {
-            background-color: var(--neon-purple);
-            color: white;
-            box-shadow: 0 0 15px var(--neon-purple);
-        }
-        .action-btn:hover:not(:disabled) {
-            background-color: #d24dff;
-            box-shadow: 0 0 25px var(--neon-purple);
-        }
-        .action-btn:disabled {
-            background-color: #555;
-            color: #888;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
-        
-        /* Dedektif için özel renk */
-        .detective-ui { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 247, 255, 0.2); }
-        .detective-ui .action-btn { background-color: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); }
-        .detective-ui .action-btn:hover:not(:disabled) { background-color: #4dffff; box-shadow: 0 0 25px var(--neon-blue); }
-
-        .log-area {
-            margin-top: auto;
-            font-size: 1.1em;
-            color: #aaa;
-            text-align: left;
-            width: 100%;
-            padding-top: 15px;
-        }
     </style>
 </head>
 <body>
 
     <div id="host-screen">
-        <h1>Gölge Şehir</h1>
+        <h1>GÖLGE ŞEHİR</h1>
         <div id="timer">HAZIR</div>
-        <div id="status-text">Oyun Başlatılmayı Bekliyor...</div>
-        <button onclick="startGame()" class="main-btn">OYUNU BAŞLAT</button>
-        <div id="game-log" style="font-size:1.2em; color:var(--text-color); margin-top:20px;"></div>
+        <div id="status-text">Roller dağıtılıyor...</div>
+        <button onclick="startGame()" class="main-btn" id="start-btn">OYUNU BAŞLAT</button>
     </div>
 
-    <div class="players-container">
-        
-        <div class="player-device" id="p1-device">
-            <div class="blackout-curtain" id="p1-curtain">
-                <div>GECE<br>UYUYORSUNUZ...</div>
-            </div>
-            <span class="role-badge">Sen: KATİL</span>
-            <h3>Hedef Seç</h3>
-            <p>Bu gece kimi ortadan kaldıracaksın?</p>
-            <select id="p1-target">
-                <option value="Oyuncu 2">Oyuncu 2 (Dedektif)</option>
-                <option value="Oyuncu 3">Oyuncu 3 (Vatandaş)</option>
-            </select>
-            <button class="action-btn" id="p1-btn" onclick="killerAction()">ÖLDÜR</button>
-            <div class="log-area" id="p1-log">Sıranı bekle...</div>
+    <div class="players-container" id="device-container">
         </div>
 
-        <div class="player-device detective-ui" id="p2-device">
-            <div class="blackout-curtain" id="p2-curtain">
-                <div>GECE<br>UYUYORSUNUZ...</div>
-            </div>
-            <span class="role-badge">Sen: DEDEKTİF</span>
-            <h3>Sorgula</h3>
-            <p>Kimin kimliğini araştıracaksın?</p>
-            <select id="p2-target">
-                <option value="Oyuncu 1">Oyuncu 1</option>
-                <option value="Oyuncu 3">Oyuncu 3</option>
-            </select>
-            <button class="action-btn" id="p2-btn" onclick="detectiveAction()">ARAŞTIR</button>
-            <div class="log-area" id="p2-log">Sıranı bekle...</div>
-        </div>
-
-        <div class="player-device" id="p3-device">
-            <div class="blackout-curtain" id="p3-curtain">
-                <div>GECE<br>UYUYORSUNUZ...</div>
-            </div>
-            <span class="role-badge">Sen: VATANDAŞ</span>
-            <h3>Bekle</h3>
-            <p>Geceleyin yapabileceğin bir şey yok.</p>
-            <div class="log-area">Sadece dua et...</div>
-        </div>
-
-    </div>
     <script>
-        let dayCount = 1;
-        let killerChoice = null;
-        
+        // OYUN VERİSİ
+        const totalPlayers = 3;
+        let players = []; 
+        let killerTarget = null;
+
+        // Rol Tanımları
+        const ROLES = {
+            KILLER: { name: 'Katil', class: 'badge-killer', deviceClass: 'device-killer' },
+            DETECTIVE: { name: 'Dedektif', class: 'badge-detective', deviceClass: 'device-detective' },
+            CITIZEN: { name: 'Vatandaş', class: 'badge-citizen', deviceClass: 'device-citizen' }
+        };
+
+        // 1. ADIM: OYUNU KUR (Rastgele Rol Dağıtımı)
+        function initGame() {
+            const roleDeck = [ROLES.KILLER, ROLES.DETECTIVE, ROLES.CITIZEN];
+            
+            // Diziyi karıştır (Fisher-Yates Shuffle)
+            for (let i = roleDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [roleDeck[i], roleDeck[j]] = [roleDeck[j], roleDeck[i]];
+            }
+
+            players = [];
+            const container = document.getElementById('device-container');
+            container.innerHTML = ''; // Temizle
+
+            // Oyuncuları ve Cihazları Oluştur
+            for(let i=0; i<totalPlayers; i++) {
+                const playerObj = {
+                    id: i,
+                    name: `Oyuncu ${i+1}`,
+                    roleData: roleDeck[i],
+                    isDead: false
+                };
+                players.push(playerObj);
+                createPlayerDevice(playerObj);
+            }
+            
+            document.getElementById('status-text').innerText = "Roller gizlice dağıtıldı. Başlatmayı bekliyor.";
+        }
+
+        // Cihaz HTML'ini oluştur
+        function createPlayerDevice(player) {
+            const container = document.getElementById('device-container');
+            const isKiller = player.roleData.name === 'Katil';
+            const isDetective = player.roleData.name === 'Dedektif';
+            const isCitizen = player.roleData.name === 'Vatandaş';
+
+            let actionHTML = '';
+            
+            // Sadece Katil ve Dedektif'e özel aksiyon menüsü
+            if (isKiller) {
+                actionHTML = `
+                    <h3>Hedef Seç</h3>
+                    <p>Kimse seni görmüyor. Kurbanını seç.</p>
+                    <select id="select-p${player.id}">
+                        ${getOptionsHTML(player.id)} 
+                    </select>
+                    <button class="action-btn btn-kill" id="btn-p${player.id}" onclick="submitAction(${player.id}, 'kill')">ÖLDÜR</button>
+                `;
+            } else if (isDetective) {
+                actionHTML = `
+                    <h3>Sorgula</h3>
+                    <p>Şüphelendiğin kişiyi seç.</p>
+                    <select id="select-p${player.id}">
+                        ${getOptionsHTML(player.id)}
+                    </select>
+                    <button class="action-btn btn-investigate" id="btn-p${player.id}" onclick="submitAction(${player.id}, 'investigate')">ARAŞTIR</button>
+                `;
+            } else {
+                actionHTML = `
+                    <h3>Bekle</h3>
+                    <p>Geceleyin yapabileceğin bir şey yok.</p>
+                `;
+            }
+
+            const html = `
+                <div class="player-device ${player.roleData.deviceClass}" id="device-p${player.id}">
+                    <div class="blackout active" id="curtain-p${player.id}">
+                        <div>GECE<br>UYUYORSUNUZ...</div>
+                    </div>
+                    <span class="role-badge ${player.roleData.class}">Sen: ${player.roleData.name}</span>
+                    ${actionHTML}
+                    <div class="log-area" id="log-p${player.id}">Sıranı bekle...</div>
+                </div>
+            `;
+            container.innerHTML += html;
+        }
+
+        // Dropdown için seçenekleri oluştur (Sadece isimler, roller GİZLİ)
+        function getOptionsHTML(myId) {
+            let options = '';
+            players.forEach(p => {
+                if (p.id !== myId) { // Kendini seçeme
+                    // BURASI ÖNEMLİ: Value olarak ID tutuyoruz ama ekranda sadece İSİM var. Rol yok.
+                    options += `<option value="${p.id}">${p.name}</option>`; 
+                }
+            });
+            return options;
+        }
+
+        // 2. ADIM: OYUN AKIŞI
         function speak(text) {
             const synth = window.speechSynthesis;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'tr-TR'; 
-            utterance.rate = 0.9; 
-            utterance.pitch = 0.8; 
-            synth.speak(utterance);
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'tr-TR'; u.rate = 0.9; u.pitch = 0.7;
+            synth.speak(u);
             document.getElementById('status-text').innerText = text;
         }
 
         function startGame() {
-            document.querySelector('.main-btn').style.display = 'none';
-            speak("Gölge Şehir'e hoş geldiniz. Tartışma başlıyor.");
-            startTimer(5, () => {
-                startNightPhase();
-            });
-        }
-
-        function startTimer(seconds, callback) {
-            let timeLeft = seconds;
+            document.getElementById('start-btn').style.display = 'none';
+            speak("Gölge Şehir'de akşam oluyor. Tartışma süresi başladı.");
+            
+            let seconds = 5;
             const timerEl = document.getElementById('timer');
-            const interval = setInterval(() => {
-                timerEl.innerText = `00:0${timeLeft}`;
-                timeLeft--;
-                if (timeLeft < 0) {
-                    clearInterval(interval);
-                    timerEl.innerText = "SÜRE BİTTİ";
-                    if(callback) callback();
+            const int = setInterval(() => {
+                timerEl.innerText = `00:0${seconds}`;
+                seconds--;
+                if(seconds < 0) {
+                    clearInterval(int);
+                    timerEl.innerText = "GECE";
+                    startNight();
                 }
             }, 1000);
         }
 
-        function startNightPhase() {
-            speak("Gece çöküyor. Herkes gözlerini kapatsın.");
-            document.getElementById('host-screen').style.backgroundColor = "rgba(0, 0, 30, 0.95)";
-            document.getElementById('p1-curtain').classList.add('active-blackout');
-            document.getElementById('p2-curtain').classList.add('active-blackout');
-            document.getElementById('p3-curtain').classList.add('active-blackout');
+        function startNight() {
+            speak("Gece çöktü. Herkes uyusun.");
+            // 4 saniye sonra Katil uyansın
             setTimeout(() => {
-                wakeKiller();
+                wakeRole('Katil');
             }, 4000);
         }
 
-        function wakeKiller() {
-            speak("Katil uyan... Kurbanını seç.");
-            const p1Curtain = document.getElementById('p1-curtain');
-            p1Curtain.classList.remove('active-blackout');
+        function wakeRole(roleName) {
+            // İlgili role sahip oyuncuyu bul
+            const player = players.find(p => p.roleData.name === roleName);
+            
+            if (player) {
+                // Sadece onun perdesini kaldır
+                if(roleName === 'Katil') speak("Katil uyan... Kurbanını seç.");
+                if(roleName === 'Dedektif') speak("Katil uyu... Dedektif uyan... Araştır.");
+                
+                document.getElementById(`curtain-p${player.id}`).classList.remove('active');
+            } else {
+                // Eğer o rol yoksa (veya ölmüşse) boşluk verip diğerine geç
+                setTimeout(() => nextPhase(roleName), 3000); 
+            }
         }
 
-        function killerAction() {
-            const target = document.getElementById('p1-target').value;
-            killerChoice = target;
-            document.getElementById('p1-log').innerText = `${target} seçildi.`;
-            document.getElementById('p1-btn').disabled = true;
-            setTimeout(() => {
-                document.getElementById('p1-curtain').classList.add('active-blackout');
-                wakeDetective();
-            }, 2000);
+        function submitAction(playerId, type) {
+            const deviceBtn = document.getElementById(`btn-p${playerId}`);
+            const logArea = document.getElementById(`log-p${playerId}`);
+            
+            deviceBtn.disabled = true;
+
+            if (type === 'kill') {
+                const targetId = document.getElementById(`select-p${playerId}`).value;
+                const targetName = players[targetId].name; // Sadece isim görünür
+                
+                killerTarget = targetName;
+                logArea.innerText = `Seçim yapıldı: ${targetName}`;
+                
+                // Perdeyi kapat, Dedektifi çağır
+                setTimeout(() => {
+                    document.getElementById(`curtain-p${playerId}`).classList.add('active');
+                    wakeRole('Dedektif');
+                }, 2000);
+
+            } else if (type === 'investigate') {
+                const targetId = document.getElementById(`select-p${playerId}`).value;
+                const targetPlayer = players[targetId];
+                
+                // Dedektif mantığı: Seçilen kişinin GERÇEK rolünü kontrol et
+                let result = "TEMİZ";
+                if (targetPlayer.roleData.name === 'Katil') {
+                    result = "KATİL!";
+                }
+                
+                logArea.innerText = `RAPOR: ${targetPlayer.name} bir ${result}`;
+                
+                // Perdeyi kapat, Sabaha geç
+                setTimeout(() => {
+                    document.getElementById(`curtain-p${playerId}`).classList.add('active');
+                    startMorning();
+                }, 4000);
+            }
         }
 
-        function wakeDetective() {
-            speak("Katil uyu... Dedektif uyan... Şüpheliyi sorgula.");
-            const p2Curtain = document.getElementById('p2-curtain');
-            p2Curtain.classList.remove('active-blackout');
-        }
-
-        function detectiveAction() {
-            const target = document.getElementById('p2-target').value;
-            let result = "TEMİZ";
-            if (target === "Oyuncu 1") result = "KATİL!";
-            document.getElementById('p2-log').innerText = `SONUÇ: ${target} bir ${result}`;
-            document.getElementById('p2-btn').disabled = true;
-            setTimeout(() => {
-                document.getElementById('p2-curtain').classList.add('active-blackout');
-                startMorningPhase();
-            }, 4000);
-        }
-
-        function startMorningPhase() {
+        function startMorning() {
             speak("Sabah oldu. Herkes uyanabilir.");
-            document.getElementById('host-screen').style.backgroundColor = "rgba(0, 0, 20, 0.9)";
-            document.getElementById('p1-curtain').classList.remove('active-blackout');
-            document.getElementById('p2-curtain').classList.remove('active-blackout');
-            document.getElementById('p3-curtain').classList.remove('active-blackout');
+            
+            // Tüm perdeleri aç
+            players.forEach(p => {
+                document.getElementById(`curtain-p${p.id}`).classList.remove('active');
+            });
+
             setTimeout(() => {
-                let msg = killerChoice ? `Dün gece talihsiz bir olay yaşandı. ${killerChoice} ölü bulundu.` : "Dün gece sakin geçti. Kimse ölmedi.";
+                let msg = "";
+                if (killerTarget) {
+                    msg = `Dün gece ${killerTarget} ölü bulundu.`;
+                } else {
+                    msg = "Dün gece kimse ölmedi.";
+                }
                 speak(msg);
                 document.getElementById('status-text').innerText = msg;
+                document.getElementById('start-btn').style.display = 'inline-block';
+                document.getElementById('start-btn').innerText = 'YENİ TUR / YENİ DAĞITIM';
+                document.getElementById('start-btn').onclick = function(){ location.reload(); }; 
             }, 3000);
         }
+
+        // Sayfa yüklenince oyunu kur
+        window.onload = initGame;
+
     </script>
 </body>
 </html>
