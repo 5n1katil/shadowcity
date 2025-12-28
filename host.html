@@ -160,18 +160,12 @@
 
     import {
       ROLES,
-      ROLE_LABEL_TR,
       ACTIONS,
-      speakTR,
-      clampInt,
-      makeRoleDeck,
-      aliveUids,
       computeWin,
       strictMajority,
       pickMostVoted,
       nowMs,
-      mergeSettings,
-      resolveNight
+      aliveCountByRole
     } from "./shared.js";
 
     let roomCode = null;
@@ -190,6 +184,115 @@
     let countdownHandle = null;
 
     const el = (id) => document.getElementById(id);
+
+    const ROLE_LABEL_TR = {
+      CITIZEN: "Vatandaş",
+      KILLER: "Katil",
+      DETECTIVE: "Dedektif",
+      DOCTOR: "Doktor",
+    };
+
+    function speakTR(text) {
+      try {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "tr-TR";
+        u.rate = 0.95;
+        u.pitch = 0.9;
+        synth.cancel();
+        synth.speak(u);
+      } catch (_) {}
+    }
+
+    function clampInt(x, min, max, fallback) {
+      const n = Number.parseInt(x, 10);
+      if (Number.isNaN(n)) return fallback;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function mergeSettings(raw) {
+      const defaults = {
+        killerCount: 1,
+        includeDetective: true,
+        includeDoctor: true,
+        discussionSec: 120,
+        nightSec: 45,
+        voteSec: 45,
+        allowNoKill: true,
+        revealDeadRoleDuringGame: false,
+        doctorSelfSaveMax: 1,
+      };
+      return { ...defaults, ...(raw || {}) };
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function makeRoleDeck(playerUids, rawSettings) {
+      const settings = mergeSettings(rawSettings);
+      const { killerCount, includeDetective, includeDoctor } = settings;
+
+      const n = playerUids.length;
+      const deck = [];
+
+      for (let i = 0; i < killerCount; i++) deck.push(ROLES.KILLER);
+      if (includeDetective) deck.push(ROLES.DETECTIVE);
+      if (includeDoctor) deck.push(ROLES.DOCTOR);
+
+      while (deck.length < n) deck.push(ROLES.CITIZEN);
+
+      return shuffle(deck).slice(0, n);
+    }
+
+    function aliveUids(playersObj, { includeHost = false } = {}) {
+      return Object.entries(playersObj || {})
+        .filter(([, p]) => {
+          if (!p) return false;
+          if (!includeHost && p.isHost) return false;
+          return p.alive === true;
+        })
+        .map(([uid]) => uid);
+    }
+
+    function resolveNight({
+      killerChoiceUid,
+      doctorSaveUid,
+      doctorUid,
+      playersObj,
+      doctorState,
+      settings,
+    }) {
+      const s = mergeSettings(settings);
+
+      if (s.allowNoKill && killerChoiceUid === ACTIONS.NO_KILL) {
+        return { diedUid: null, saved: false, reason: "NO_KILL" };
+      }
+
+      if (!killerChoiceUid || !playersObj?.[killerChoiceUid]?.alive) {
+        return { diedUid: null, saved: false, reason: "INVALID_TARGET" };
+      }
+
+      if (doctorSaveUid && doctorSaveUid === killerChoiceUid) {
+        if (doctorUid && doctorSaveUid === doctorUid) {
+          const used = Number(doctorState?.selfSaveUsed || 0);
+          if (used >= s.doctorSelfSaveMax) {
+            return { diedUid: killerChoiceUid, saved: false, reason: "SELF_SAVE_EXHAUSTED" };
+          }
+          return { diedUid: null, saved: true, reason: "DOCTOR_SELF_SAVE" };
+        }
+
+        return { diedUid: null, saved: true, reason: "DOCTOR_SAVE" };
+      }
+
+      return { diedUid: killerChoiceUid, saved: false, reason: "KILLED" };
+    }
 
     const NIGHT_STAGES = ["kill", "protect", "investigate"];
 
