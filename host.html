@@ -84,6 +84,38 @@
           </div>
         </div>
 
+        <div class="row">
+          <div>
+            <label>Katil “Kimseyi öldürme” seçeneği</label>
+            <select id="allowNoKill">
+              <option value="true">Açık</option>
+              <option value="false">Kapalı</option>
+            </select>
+          </div>
+          <div>
+            <label>Oyun bitmeden ölenin rolü açıklansın mı?</label>
+            <select id="revealDeadRoleDuringGame">
+              <option value="false" selected>Hayır (önerilen)</option>
+              <option value="true">Evet</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Doktor kendini koruma hakkı</label>
+            <select id="doctorSelfSaveMax">
+              <option value="0">0</option>
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+          <div>
+            <label class="muted">İpucu</label>
+            <div class="tiny muted">0: hiç koruyamaz • 1: bir kez korur (senin kuralın)</div>
+          </div>
+        </div>
+
         <button class="btn btn-ghost" id="btnSaveSettings" disabled>AYARLARI KAYDET</button>
 
         <div class="hr"></div>
@@ -97,6 +129,11 @@
         <div class="grid2">
           <button class="btn btn-ghost" id="btnStartVote" disabled>OYLAMA BAŞLAT (OPS.)</button>
           <button class="btn btn-ghost" id="btnSkipVote" disabled>OYLAMAYI ATLA</button>
+        </div>
+
+        <div class="grid2">
+          <button class="btn btn-primary" id="btnResolveNight" disabled>GECEYİ SONUÇLANDIR</button>
+          <button class="btn btn-primary" id="btnResolveVote" disabled>OYLAMAYI SONUÇLANDIR</button>
         </div>
 
         <div class="hr"></div>
@@ -153,7 +190,6 @@
       ensureAuth,
       generateRoomCode,
       joinRoomAsHost,
-      roomRef,
       settingsRef,
       stateRef,
       playersRef,
@@ -168,11 +204,13 @@
       update,
       get,
       ref,
+      db
     } from "./firebase.js";
 
     import {
       ROLES,
       ROLE_LABEL_TR,
+      ACTIONS,
       speakTR,
       clampInt,
       makeRoleDeck,
@@ -180,17 +218,29 @@
       computeWin,
       strictMajority,
       pickMostVoted,
-      nowMs
+      nowMs,
+      mergeSettings,
+      resolveNight
     } from "./shared.js";
 
     let roomCode = null;
     let creatorUid = null;
 
-    let players = {}; // players/{uid}
-    let rolesByUid = {}; // secret/roles snapshot (host will also keep a local copy after deal)
-    let settings = null;
+    let players = {};       // players/{uid}
+    let rolesByUid = {};    // secret/roles snapshot (host reads when needed)
+    let settings = null;    // merged settings cache
+    let stateCache = null;
 
     const el = (id) => document.getElementById(id);
+
+    function escapeHtml(s){
+      return String(s || "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+    }
 
     function setHostText(text, speak = false){
       el("hostText").textContent = text;
@@ -198,14 +248,24 @@
     }
 
     function getSettingsFromUI(){
-      return {
-        killerCount: clampInt(el("killerCount").value, 1, 3, 1),
+      return mergeSettings({
+        killerCount: clampInt(el("killerCount").value, 1, 6, 1),
         includeDetective: el("includeDetective").value === "true",
         includeDoctor: el("includeDoctor").value === "true",
+
         discussionSec: clampInt(el("discussionSec").value, 15, 9999, 120),
         nightSec: clampInt(el("nightSec").value, 10, 9999, 45),
-        voteSec: clampInt(el("voteSec").value, 10, 9999, 45)
-      };
+        voteSec: clampInt(el("voteSec").value, 10, 9999, 45),
+
+        allowNoKill: el("allowNoKill").value === "true",
+        revealDeadRoleDuringGame: el("revealDeadRoleDuringGame").value === "true",
+        doctorSelfSaveMax: clampInt(el("doctorSelfSaveMax").value, 0, 9, 1),
+      });
+    }
+
+    function setPhaseUI(st){
+      el("kpiPhase").textContent = st?.phase || "—";
+      el("kpiDay").textContent = st?.day ? String(st.day) : "—";
     }
 
     function renderPlayers(){
@@ -220,6 +280,7 @@
             <div>
               <div><strong>${escapeHtml(p.name || "Player")}</strong></div>
               <div class="tiny muted">${uid.slice(0,6)}…</div>
+              ${p.alive ? "" : `<div class="tiny muted">⛔ Elendi</div>`}
             </div>
             <div class="badge ${p.alive ? "badge--alive":"badge--dead"}">
               ${p.alive ? "Alive" : "Dead"}
@@ -234,20 +295,6 @@
       el("kpiDead").textContent = String(dead);
     }
 
-    function escapeHtml(s){
-      return String(s || "")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#39;");
-    }
-
-    function setPhaseUI(state){
-      el("kpiPhase").textContent = state?.phase || "—";
-      el("kpiDay").textContent = state?.day ? String(state.day) : "—";
-    }
-
     function updateVoteCallUI(voteCallRequests){
       const aliveCount = aliveUids(players).length;
       const maj = strictMajority(aliveCount);
@@ -257,31 +304,42 @@
       el("voteCallMajority").textContent = `${reqCount} / ${maj} çoğunluk`;
     }
 
+    async function readSettings(){
+      if (!roomCode) return getSettingsFromUI();
+      const sSnap = await get(settingsRef(roomCode));
+      return mergeSettings(sSnap.exists() ? sSnap.val() : getSettingsFromUI());
+    }
+
+    async function readSecretRoles(){
+      if (!roomCode) return {};
+      const snap = await get(ref(db, `rooms/${roomCode}/secret/roles`));
+      return snap.exists() ? (snap.val() || {}) : {};
+    }
+
     async function createRoom(){
-      await ensureAuth();
-      creatorUid = (await ensureAuth()).uid;
+      const auth = await ensureAuth();
+      creatorUid = auth.uid;
 
       roomCode = generateRoomCode(6);
       el("roomCodeText").textContent = roomCode;
 
-      // Host must be inside players/ to read/write under rules
       const hostName = el("hostName").value || "HOST";
       await joinRoomAsHost(roomCode, hostName);
 
-      const s = getSettingsFromUI();
-      settings = s;
+      settings = getSettingsFromUI();
 
       await set(settingsRef(roomCode), {
         creatorUid,
         createdAt: nowMs(),
-        ...s
+        ...settings
       });
 
       await set(stateRef(roomCode), {
-        phase:”waiting”,
+        phase: "waiting",
         day: 0,
         createdAt: nowMs(),
-        hostText: "Oda hazır. Oyuncuların katılması bekleniyor."
+        hostText: "Oda hazır. Oyuncuların katılması bekleniyor.",
+        timerEndsAt: null
       });
 
       // enable buttons
@@ -290,9 +348,10 @@
       el("btnForceNight").disabled = false;
       el("btnStartVote").disabled = false;
       el("btnSkipVote").disabled = false;
+      el("btnResolveNight").disabled = false;
+      el("btnResolveVote").disabled = false;
 
       setHostText(`Oda oluşturuldu. Kod: ${roomCode}. Oyuncular katılsın.`, true);
-
       wireListeners();
     }
 
@@ -301,14 +360,19 @@
     function wireListeners(){
       if (!roomCode) return;
 
+      if (unsubPlayers) unsubPlayers();
+      if (unsubState) unsubState();
+      if (unsubVoteCall) unsubVoteCall();
+
       unsubPlayers = listen(playersRef(roomCode), (val) => {
         players = val || {};
         renderPlayers();
       });
 
       unsubState = listen(stateRef(roomCode), (st) => {
-        setPhaseUI(st || {});
-        if (st?.hostText) el("hostText").textContent = st.hostText;
+        stateCache = st || {};
+        setPhaseUI(stateCache);
+        if (stateCache?.hostText) el("hostText").textContent = stateCache.hostText;
       });
 
       unsubVoteCall = listen(voteCallRequestsRef(roomCode), (reqs) => {
@@ -318,81 +382,50 @@
 
     async function saveSettings(){
       if (!roomCode) return;
-      const s = getSettingsFromUI();
-      settings = s;
-      await update(settingsRef(roomCode), s);
+      settings = getSettingsFromUI();
+      await update(settingsRef(roomCode), settings);
       setHostText("Ayarlar kaydedildi.", true);
+    }
+
+    async function bulkUpdate(pathMap){
+      await update(ref(db, "/"), pathMap);
     }
 
     async function dealRolesAndStart(){
       if (!roomCode) return;
 
-      const s = await get(settingsRef(roomCode));
-      settings = s.exists() ? s.val() : getSettingsFromUI();
+      settings = await readSettings();
 
-      const alive = aliveUids(players);
+      const alive = aliveUids(players); // host hariç alive
       if (alive.length < 3){
         setHostText("En az 3 oyuncu gerekli.", true);
         return;
       }
 
-      const deck = makeRoleDeck(alive, settings);
-
-      // Write roles into secret/roles/{uid}
-      const updates = {};
-      alive.forEach((uid, i) => {
-        updates[`rooms/${roomCode}/secret/roles/${uid}`] = {
-          role: deck[i],
-          // inbox: player’a gizli mesaj kanalı
-          inbox: {
-            t: nowMs(),
-            msg: "Rolün dağıtıldı. Host başlatınca başlayacak."
-          }
-        };
-      });
-
-      await update(ref(window.db, "/"), updates); // uses global db from firebase.js? (safer: import db) -> we used ref from firebase.js; but window.db may not exist.
-    }
-
-    // ⚠️ Yukarıdaki tek satır "window.db" bazı kurulumlarda yoktur.
-    // Bu yüzden updateRef'i direkt kullanacağız:
-    async function bulkUpdate(pathMap){
-      // pathMap: { "rooms/..": {...} }
-      // firebase.js export etmediğimiz için ref(db, "/") kullanmalıyız
-      // ama firebase.js içinde db export var. Erişelim:
-      const { db } = await import("./firebase.js");
-      await update(ref(db, "/"), pathMap);
-    }
-
-    async function dealRolesAndStart_SAFE(){
-      if (!roomCode) return;
-
-      const sSnap = await get(settingsRef(roomCode));
-      settings = sSnap.exists() ? sSnap.val() : getSettingsFromUI();
-
-      const alive = aliveUids(players);
-      if (alive.length < 3){
-        setHostText("En az 3 oyuncu gerekli.", true);
-        return;
-      }
-
+      // Roller dağıt
       const deck = makeRoleDeck(alive, settings);
 
       const pathMap = {};
+
+      // oyuncu state reset (alive=true, selfSaveUsed=0) + gizli roller
       alive.forEach((uid, i) => {
+        pathMap[`rooms/${roomCode}/players/${uid}/alive`] = true;
+        pathMap[`rooms/${roomCode}/players/${uid}/doctorSelfProtectUsed`] = 0;
+
         pathMap[`rooms/${roomCode}/secret/roles/${uid}`] = {
           role: deck[i],
           inbox: { t: nowMs(), msg: "Rolün dağıtıldı. Oyun başlıyor." }
         };
       });
 
-      // reset vote + night nodes
+      // reset nodes
       pathMap[`rooms/${roomCode}/voting/votes`] = null;
+      pathMap[`rooms/${roomCode}/voting/result`] = null;
       pathMap[`rooms/${roomCode}/day/voteCall/requests`] = null;
       pathMap[`rooms/${roomCode}/night/actions`] = null;
       pathMap[`rooms/${roomCode}/night/results`] = null;
 
-      // state
+      // state -> discussion day 1
       pathMap[`rooms/${roomCode}/state`] = {
         phase: "discussion",
         day: 1,
@@ -403,32 +436,32 @@
 
       await bulkUpdate(pathMap);
 
-      setHostText(`Roller dağıtıldı. Gün 1 tartışma başladı.`, true);
+      setHostText("Roller dağıtıldı. Gün 1 tartışma başladı.", true);
       speakTR("Gün bir. Tartışma başladı.");
     }
 
     async function startNight(){
       if (!roomCode) return;
-      const sSnap = await get(settingsRef(roomCode));
-      settings = sSnap.exists() ? sSnap.val() : getSettingsFromUI();
+
+      settings = await readSettings();
+
+      // night/actions resetle (önceki tur kalıntısı olmasın)
+      await set(nightActionsRef(roomCode), null);
 
       await update(stateRef(roomCode), {
         phase: "night",
-        nightStage: "kill",
         hostText: "Gece oldu. Katil(ler) uyanıyor. Kurban seçin.",
         timerEndsAt: nowMs() + settings.nightSec * 1000
       });
 
+      // TTS script: katil -> doktor -> dedektif
       speakTR("Gece oldu. Katiller uyanıyor. Kurban seçin.");
     }
 
     async function startVote(){
       if (!roomCode) return;
+      settings = await readSettings();
 
-      const sSnap = await get(settingsRef(roomCode));
-      settings = sSnap.exists() ? sSnap.val() : getSettingsFromUI();
-
-      // reset votes
       await set(votingVotesRef(roomCode), null);
 
       await update(stateRef(roomCode), {
@@ -442,66 +475,93 @@
 
     async function skipVote(){
       if (!roomCode) return;
+      settings = await readSettings();
+
       await update(stateRef(roomCode), {
         phase: "discussion",
         hostText: "Oylama yapılmadı. Tartışma devam ediyor.",
-        timerEndsAt: nowMs() + (settings?.discussionSec || 120) * 1000
+        timerEndsAt: nowMs() + settings.discussionSec * 1000
       });
+
       speakTR("Oylama yapılmadı. Tartışma devam ediyor.");
     }
 
-    // ---- Night resolution pipeline (host-driven) ----
+    // ---- Night resolution (host) ----
     async function resolveNightAndGoMorning(){
       if (!roomCode) return;
 
-      // read actions
+      settings = await readSettings();
+
+      // Actions
       const actionsSnap = await get(nightActionsRef(roomCode));
       const actions = actionsSnap.exists() ? actionsSnap.val() : {};
 
-      // actions structure:
-      // actions.kill: { uid: targetUid }
-      // actions.protect: { uid: targetUid }
-      // actions.investigate: { uid: targetUid }
+      // Beklenen yapı:
+      // night/actions/kill/{killerUid}: targetUid | "NO_KILL"
+      // night/actions/protect/{doctorUid}: targetUid
+      // night/actions/investigate/{detectiveUid}: targetUid
       const killMap = actions?.kill || {};
       const protectMap = actions?.protect || {};
       const investigateMap = actions?.investigate || {};
 
-      // determine kill target: most picked by killers, tie => no kill
-      const killTally = new Map();
-      for (const targetUid of Object.values(killMap)) {
-        if (!targetUid) continue;
-        killTally.set(targetUid, (killTally.get(targetUid) || 0) + 1);
+      // killers: en çok oy alan hedef; tie -> NO_KILL (veya null)
+      const tally = new Map();
+      for (const target of Object.values(killMap)) {
+        if (!target) continue;
+        if (target === ACTIONS.NO_KILL) continue; // NO_KILL tally etmeyelim
+        tally.set(target, (tally.get(target) || 0) + 1);
       }
-      let killTarget = null, best = 0, tie = false;
-      for (const [t, c] of killTally.entries()){
-        if (c > best){ best = c; killTarget = t; tie = false; }
+
+      let killTargetUid = null;
+      let best = 0;
+      let tie = false;
+      for (const [t, c] of tally.entries()){
+        if (c > best){ best = c; killTargetUid = t; tie = false; }
         else if (c === best){ tie = true; }
       }
-      if (tie) killTarget = null;
 
-      // determine protected: if any doctor protected that target => saved
-      const protectedTargets = new Set(Object.values(protectMap).filter(Boolean));
-      const saved = killTarget && protectedTargets.has(killTarget);
+      // tie varsa ve allowNoKill açıksa -> NO_KILL gibi davranalım
+      if (tie) killTargetUid = (settings.allowNoKill ? ACTIONS.NO_KILL : null);
 
-      // apply death if not saved
+      // Doktor hedefi (tek doktor varsayıyoruz; birden fazla olursa ilk geçerli)
+      let doctorUid = null;
+      let doctorSaveUid = null;
+      for (const [uid, t] of Object.entries(protectMap || {})) {
+        if (!t) continue;
+        doctorUid = uid;
+        doctorSaveUid = t;
+        break;
+      }
+
+      // Doktor self-save limiti: oyuncu kaydındaki doctorSelfProtectUsed üzerinden kontrol
+      const doctorState = doctorUid ? { selfSaveUsed: Number(players?.[doctorUid]?.doctorSelfProtectUsed || 0) } : { selfSaveUsed: 0 };
+
+      const nightRes = resolveNight({
+        killerChoiceUid: killTargetUid,
+        doctorSaveUid,
+        doctorUid,
+        playersObj: players,
+        doctorState,
+        settings
+      });
+
+      // Self-save kullanıldıysa host oyuncu kaydını artır
+      if (nightRes.reason === "DOCTOR_SELF_SAVE" && doctorUid) {
+        const used = Number(players?.[doctorUid]?.doctorSelfProtectUsed || 0);
+        await update(playerRef(roomCode, doctorUid), { doctorSelfProtectUsed: used + 1 });
+      }
+
+      // Ölüm uygula
       let deadUid = null;
-      if (killTarget && !saved) {
-        deadUid = killTarget;
+      if (nightRes.diedUid) {
+        deadUid = nightRes.diedUid;
         await update(playerRef(roomCode, deadUid), { alive: false, diedAt: nowMs() });
       }
 
-      // detective feedback: only to detective uid(s)
-      // We'll write into their secret/roles/{uid}/inbox
-      const rolesSnap = await get(ref(await import("./firebase.js").then(m=>m.db), `rooms/${roomCode}/secret/roles`));
-      // above is messy; keep it simple: we won't fetch rolesSnap here; we already have roles in DB, but host may not.
-      // We'll derive detective uids by scanning secret/roles via read:
-      // Actually: easier -> ask players to show result? No. We'll do proper read:
-      const { db } = await import("./firebase.js");
-      const secretRolesSnap = await get(ref(db, `rooms/${roomCode}/secret/roles`));
-      const secretRoles = secretRolesSnap.exists() ? secretRolesSnap.val() : {};
+      // Dedektif raporu: inbox’a yaz (her dedektif kendi sonucunu görür)
+      const secretRoles = await readSecretRoles();
       rolesByUid = secretRoles || {};
 
-      // investigation results
       for (const [detUid, targetUid] of Object.entries(investigateMap || {})) {
         if (!targetUid) continue;
         const targetRole = secretRoles?.[targetUid]?.role || "UNKNOWN";
@@ -509,19 +569,9 @@
         await update(myRoleRef(roomCode, detUid), { inbox: { t: nowMs(), msg } });
       }
 
-      // doctor self-protect limit tracking (1 time)
-      // if a doctor protected themselves, increment doctorSelfProtectUsed (host can write due to rules patch!)
-      for (const [docUid, targetUid] of Object.entries(protectMap || {})) {
-        if (docUid === targetUid && targetUid) {
-          const used = Number(players?.[docUid]?.doctorSelfProtectUsed || 0);
-          if (used < 1) {
-            await update(playerRef(roomCode, docUid), { doctorSelfProtectUsed: used + 1 });
-          }
-        }
-      }
-
-      // write night results (public-ish but without role reveal)
+      // Night results (public-ish, role reveal yok)
       const deadName = deadUid ? (players?.[deadUid]?.name || "Bir oyuncu") : null;
+
       let morningText = "Sabah oldu. Bu gece kimse ölmedi.";
       if (deadUid) morningText = `Sabah oldu. Dün gece ${deadName} ölü bulundu.`;
 
@@ -529,81 +579,97 @@
         t: nowMs(),
         deadUid: deadUid || null,
         deadName: deadName || null,
-        saved: !!saved,
-        killAttempted: !!killTarget
+        saved: !!nightRes.saved,
+        killAttempted: !!killTargetUid,
+        reason: nightRes.reason
       });
 
-      // win check (rolesByUid + players)
-      const win = computeWin(players, secretRoles);
+      // Win check için güncel players snapshot al (stale olmasın)
+      const playersSnap = await get(playersRef(roomCode));
+      const freshPlayers = playersSnap.exists() ? playersSnap.val() : players;
+
+      const win = computeWin(freshPlayers, secretRoles);
       if (win.ended) {
         const winnerText = win.winner === "TOWN"
           ? "Oyun bitti. Vatandaşlar kazandı. Katiller yakalandı."
           : "Oyun bitti. Katiller kazandı. Şehir düştü.";
+
         await update(stateRef(roomCode), {
           phase: "ended",
           hostText: winnerText,
           timerEndsAt: null,
           revealAtEnd: true
         });
+
         speakTR(winnerText);
         return;
       }
 
-      // continue: discussion (NO ROLE REVEAL)
+      // Tartışmaya dön — day aynı kalır (gün, gece sabah aynı gün döngüsü)
       await update(stateRef(roomCode), {
         phase: "discussion",
         hostText: morningText + " Tartışma başladı.",
-        day: (Number((await get(stateRef(roomCode))).val()?.day || 1)),
-        timerEndsAt: nowMs() + (settings?.discussionSec || 120) * 1000
+        timerEndsAt: nowMs() + settings.discussionSec * 1000
       });
 
       speakTR(morningText);
     }
 
-    // ---- Voting resolution ----
+    // ---- Voting resolution (host) ----
     async function resolveVote(){
       if (!roomCode) return;
+      settings = await readSettings();
 
       const votesSnap = await get(votingVotesRef(roomCode));
       const votes = votesSnap.exists() ? votesSnap.val() : {};
 
       const { best, bestCount, tie } = pickMostVoted(votes);
+
       const alive = aliveUids(players);
       const maj = strictMajority(alive.length);
 
-      // skip/none or tie or no majority => no elimination
-      if (!best || tie || best === "SKIP" || bestCount < maj) {
+      // tie / SKIP / majority yok => kimse elenmez
+      if (!best || tie || best === ACTIONS.SKIP_VOTE || bestCount < maj) {
         const txt = "Oylama sonucu: Kimse elenmedi. Tartışma devam ediyor.";
         await update(stateRef(roomCode), {
           phase: "discussion",
           hostText: txt,
-          timerEndsAt: nowMs() + (settings?.discussionSec || 120) * 1000
+          timerEndsAt: nowMs() + settings.discussionSec * 1000
         });
         speakTR(txt);
         return;
       }
 
-      // eliminate best uid (no role reveal unless game ends)
+      // eleme
       const name = players?.[best]?.name || "Oyuncu";
       await update(playerRef(roomCode, best), { alive: false, eliminatedAt: nowMs() });
 
-      // win check after elimination
-      const { db } = await import("./firebase.js");
-      const secretRolesSnap = await get(ref(db, `rooms/${roomCode}/secret/roles`));
+      // win check için güncel snapshotlar
+      const [playersSnap, secretRolesSnap] = await Promise.all([
+        get(playersRef(roomCode)),
+        get(ref(db, `rooms/${roomCode}/secret/roles`))
+      ]);
+
+      const freshPlayers = playersSnap.exists() ? playersSnap.val() : players;
       const secretRoles = secretRolesSnap.exists() ? secretRolesSnap.val() : {};
 
-      const win = computeWin(players, secretRoles);
+      const win = computeWin(freshPlayers, secretRoles);
+
       if (win.ended) {
         const winnerText = win.winner === "TOWN"
           ? "Oyun bitti. Vatandaşlar kazandı."
           : "Oyun bitti. Katiller kazandı.";
+
+        const full = `${name} elendi. ${winnerText}`;
+
         await update(stateRef(roomCode), {
           phase: "ended",
-          hostText: `${name} elendi. ${winnerText}`,
+          hostText: full,
           timerEndsAt: null,
           revealAtEnd: true
         });
-        speakTR(`${name} elendi. ${winnerText}`);
+
+        speakTR(full);
         return;
       }
 
@@ -611,7 +677,7 @@
       await update(stateRef(roomCode), {
         phase: "discussion",
         hostText: txt,
-        timerEndsAt: nowMs() + (settings?.discussionSec || 120) * 1000
+        timerEndsAt: nowMs() + settings.discussionSec * 1000
       });
       speakTR(`${name} elendi. Tartışma devam ediyor.`);
     }
@@ -619,16 +685,19 @@
     // ---- Buttons ----
     el("btnCreateRoom").addEventListener("click", createRoom);
     el("btnSaveSettings").addEventListener("click", saveSettings);
-    el("btnStartGame").addEventListener("click", dealRolesAndStart_SAFE);
+    el("btnStartGame").addEventListener("click", dealRolesAndStart);
     el("btnForceNight").addEventListener("click", startNight);
     el("btnStartVote").addEventListener("click", startVote);
     el("btnSkipVote").addEventListener("click", skipVote);
+    el("btnResolveNight").addEventListener("click", resolveNightAndGoMorning);
+    el("btnResolveVote").addEventListener("click", resolveVote);
 
-    // Host “resolve” butonlarını şimdilik klavyeyle tetikle (hızlı debug):
-    // N: night resolve, V: vote resolve
+    // Keyboard shortcuts (opsiyonel ama güzel)
     window.addEventListener("keydown", (e) => {
-      if (e.key.toLowerCase() === "n") resolveNightAndGoMorning();
-      if (e.key.toLowerCase() === "v") resolveVote();
+      const k = e.key.toLowerCase();
+      if (k === "n") resolveNightAndGoMorning();
+      if (k === "v") resolveVote();
+      if (k === "g") startNight();
     });
 
     // bootstrap auth
