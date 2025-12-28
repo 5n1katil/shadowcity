@@ -64,10 +64,13 @@
         <h2 class="h2">Oylama</h2>
 
         <div id="voteOnlyCallBox" class="notice" style="display:none;">
-          <div class="muted">Oylama zorunlu değil. İstersen host’a oylama isteği gönderebilirsin.</div>
+          <div class="muted">Tartışma devam ediyor. İstersen oylama başlat veya herkesin uyumasını iste.</div>
           <div class="hr"></div>
-          <button class="btn btn-ghost" id="btnCallVote">OYLAMA İSTİYORUM</button>
-          <div class="tiny muted">Çoğunluk isterse host oylamayı başlatır.</div>
+          <div class="row">
+            <button class="btn btn-ghost" id="btnCallVoteStart">OYLAMA BAŞLAT</button>
+            <button class="btn btn-ghost" id="btnCallFastNight">UYUYALIM</button>
+          </div>
+          <div class="tiny muted">Çoğunluk isterse otomatik gerçekleşir.</div>
         </div>
 
         <div id="voteCastBox" style="display:none;">
@@ -201,6 +204,8 @@
       if (phase === "waiting" || phase === "discussion") {
         show(el("voteArea"), true);
         show(el("voteOnlyCallBox"), true);
+        el("btnCallVoteStart").disabled = false;
+        el("btnCallFastNight").disabled = false;
         el("roleHelp").textContent = "Tartışma zamanı. Oylama zorunlu değil.";
         return;
       }
@@ -380,23 +385,36 @@
       el("btnSubmitVote").disabled = true;
     }
 
-    async function callVote(){
+    async function callVoteStart(){
       const me = myPlayer();
       if (!me || !me.alive) return;
 
       // waiting/discussion sırasında istek gönder
       if (state?.phase !== "waiting" && state?.phase !== "discussion") return;
 
-      const r = ref(db, `rooms/${roomCode}/day/voteCall/requests/${myUid}`);
+      const r = ref(db, `rooms/${roomCode}/requests/voteStart/${myUid}`);
       await set(r, true);
 
-      el("btnCallVote").disabled = true;
+      el("btnCallVoteStart").disabled = true;
+    }
+
+    async function callFastNight(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
+
+      if (state?.phase !== "waiting" && state?.phase !== "discussion") return;
+
+      const r = ref(db, `rooms/${roomCode}/requests/fastNight/${myUid}`);
+      await set(r, true);
+
+      el("btnCallFastNight").disabled = true;
     }
 
     el("btnJoin").addEventListener("click", join);
     el("btnSubmitAction").addEventListener("click", submitNightAction);
     el("btnSubmitVote").addEventListener("click", submitVote);
-    el("btnCallVote").addEventListener("click", callVote);
+    el("btnCallVoteStart").addEventListener("click", callVoteStart);
+    el("btnCallFastNight").addEventListener("click", callFastNight);
 
     ensureAuth();
   </script>
