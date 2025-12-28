@@ -145,7 +145,8 @@
       playersRef,
       playerRef,
       myRoleRef,
-      voteCallRequestsRef,
+      voteStartRequestsRef,
+      fastNightRequestsRef,
       votingVotesRef,
       nightActionsRef,
       nightResultsRef,
@@ -180,7 +181,8 @@
     let settings = null;
     let stateCache = null;
     let secretRoles = null;
-    let voteCallRequests = {};
+    let voteStartRequests = {};
+    let fastNightRequests = {};
     let votesCache = {};
     let nightActionsCache = {};
 
@@ -296,11 +298,11 @@
       updateTimerUI();
     }
 
-    function hasVoteMajority(){
+    function hasRequestMajority(reqMap){
       const alive = aliveUids(players).length;
       if (alive <= 0) return false;
       const maj = strictMajority(alive);
-      const reqCount = Object.keys(voteCallRequests || {}).length;
+      const reqCount = Object.keys(reqMap || {}).length;
       return reqCount >= maj;
     }
 
@@ -324,6 +326,14 @@
       const expected = nightStageExpectedActions(stage);
       if (expected <= 0) return false;
       return Object.keys(actions || {}).length >= expected;
+    }
+
+    async function clearRequests(){
+      if (!roomCode) return;
+      await Promise.all([
+        set(voteStartRequestsRef(roomCode), null),
+        set(fastNightRequestsRef(roomCode), null),
+      ]);
     }
 
     async function enterPhase(phase, extra = {}){
@@ -441,14 +451,15 @@
       startTicking();
     }
 
-    let unsubPlayers = null, unsubState = null, unsubVoteCall = null, unsubVotes = null, unsubNightActions = null;
+    let unsubPlayers = null, unsubState = null, unsubVoteStart = null, unsubFastNight = null, unsubVotes = null, unsubNightActions = null;
 
     function wireListeners(){
       if (!roomCode) return;
 
       if (unsubPlayers) unsubPlayers();
       if (unsubState) unsubState();
-      if (unsubVoteCall) unsubVoteCall();
+      if (unsubVoteStart) unsubVoteStart();
+      if (unsubFastNight) unsubFastNight();
       if (unsubVotes) unsubVotes();
       if (unsubNightActions) unsubNightActions();
 
@@ -461,8 +472,12 @@
         setStateCache(st || {});
       });
 
-      unsubVoteCall = listen(voteCallRequestsRef(roomCode), (reqs) => {
-        voteCallRequests = reqs || {};
+      unsubVoteStart = listen(voteStartRequestsRef(roomCode), (reqs) => {
+        voteStartRequests = reqs || {};
+      });
+
+      unsubFastNight = listen(fastNightRequestsRef(roomCode), (reqs) => {
+        fastNightRequests = reqs || {};
       });
 
       unsubVotes = listen(votingVotesRef(roomCode), (votes) => {
@@ -505,7 +520,8 @@
 
       pathMap[`rooms/${roomCode}/voting/votes`] = null;
       pathMap[`rooms/${roomCode}/voting/result`] = null;
-      pathMap[`rooms/${roomCode}/day/voteCall/requests`] = null;
+      pathMap[`rooms/${roomCode}/requests/voteStart`] = null;
+      pathMap[`rooms/${roomCode}/requests/fastNight`] = null;
       pathMap[`rooms/${roomCode}/night/actions`] = null;
       pathMap[`rooms/${roomCode}/night/results`] = null;
 
@@ -528,7 +544,7 @@
       settings = await readSettings();
 
       await set(votingVotesRef(roomCode), null);
-      await set(voteCallRequestsRef(roomCode), null);
+      await clearRequests();
 
       await enterPhase("voting", {
         hostText: `${reasonText} Süre: ${settings.voteSec} sn.`,
@@ -544,6 +560,7 @@
       settings = await readSettings();
 
       await set(nightActionsRef(roomCode), null);
+      await clearRequests();
 
       const nar = stageNarration("kill", settings);
 
@@ -756,8 +773,13 @@
       }
 
       if (phase === "discussion") {
-        if (hasVoteMajority()) {
+        if (hasRequestMajority(voteStartRequests)) {
           await startVoting("Oylama isteği çoğunluğa ulaştı. Oylama başladı.");
+          return;
+        }
+
+        if (hasRequestMajority(fastNightRequests)) {
+          await startNight();
           return;
         }
 
