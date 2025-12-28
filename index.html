@@ -4,27 +4,33 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Shadow City</title>
-  <style>
-    body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#0b0d14;color:#e9ecff}
-    .wrap{max-width:900px;margin:0 auto;padding:28px}
-    .card{background:#12172a;border:1px solid #2a3358;border-radius:14px;padding:18px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    a.btn{display:inline-block;padding:12px 14px;border-radius:12px;border:1px solid #33406b;background:#192041;color:#e9ecff;text-decoration:none}
-    a.btn:hover{filter:brightness(1.08)}
-    .muted{opacity:.75}
-    h1{margin:0 0 8px 0;letter-spacing:.08em}
-  </style>
+  <link rel="stylesheet" href="./styles.css"/>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>SHADOW CITY</h1>
-      <div class="muted">Basit, otomatik akışlı “werewolf” tarzı oyun.</div>
-      <div style="height:12px"></div>
-      <div class="row">
-        <a class="btn" href="./host.html">HOST (TV/PC)</a>
-        <a class="btn" href="./player.html">PLAYER (Telefon)</a>
+  <div class="centerScreen">
+    <div class="wrap">
+      <div class="bigTitle">SHADOW CITY</div>
+      <div class="sub" style="margin-top:8px">Host TV/PC • Player Mobil</div>
+
+      <div style="height:18px"></div>
+
+      <div class="card" style="padding:18px">
+        <div class="row">
+          <div class="col">
+            <div class="label">Host</div>
+            <a class="btn primary" href="./host.html" style="display:inline-block;text-align:center">HOST EKRANI</a>
+            <div class="sub" style="margin-top:8px">Odayı kur, oyunu başlat, sonrası otomatik.</div>
+          </div>
+          <div class="col">
+            <div class="label">Player</div>
+            <a class="btn" href="./player.html" style="display:inline-block;text-align:center">PLAYER EKRANI</a>
+            <div class="sub" style="margin-top:8px">Oda kodu + isim ile katıl.</div>
+          </div>
+        </div>
       </div>
+
+      <div style="height:14px"></div>
+      <div class="sub">Not: İlk açılışta tarayıcı ses izinlerini sorabilir (TTS için).</div>
     </div>
   </div>
 </body>
