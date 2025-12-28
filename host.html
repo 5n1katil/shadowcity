@@ -5,134 +5,240 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Shadow City — Host</title>
   <style>
-    body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#0b0d14;color:#e9ecff}
+    :root{
+      --bg:#070913;
+      --fg:#f2f4ff;
+      --muted:rgba(242,244,255,.72);
+      --card:#0f1430;
+      --line:rgba(255,255,255,.10);
+      --accent:#6e7bff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Arial;background:var(--bg);color:var(--fg)}
     .wrap{max-width:1100px;margin:0 auto;padding:18px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-    .card{background:#12172a;border:1px solid #2a3358;border-radius:14px;padding:16px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .btn{padding:12px 14px;border-radius:12px;border:1px solid #33406b;background:#192041;color:#e9ecff;cursor:pointer}
-    .btn:hover{filter:brightness(1.08)}
-    .btn.primary{background:#2a57ff;border-color:#2a57ff}
-    .pill{padding:8px 10px;border:1px solid #2a3358;border-radius:999px;background:#0e1324}
-    .muted{opacity:.75}
-    .timer{font-size:72px;font-weight:800;letter-spacing:.06em}
-    .big{font-size:28px;font-weight:700}
-    input,select{padding:10px;border-radius:10px;border:1px solid #2a3358;background:#0e1324;color:#e9ecff}
-    label{font-size:12px;opacity:.8}
-    .grid{display:grid;grid-template-columns: 1fr 1fr; gap:12px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .title{font-weight:900;letter-spacing:.12em}
+    .muted{color:var(--muted)}
+    a{color:var(--fg);text-decoration:none}
+    .btn{
+      border:0; cursor:pointer;
+      padding:16px 18px;border-radius:14px;
+      font-weight:800; letter-spacing:.04em;
+      background:#18204b;color:var(--fg);
+    }
+    .btn:hover{filter:brightness(1.07)}
+    .btn.primary{background:var(--accent);color:#0b0d14}
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:18px;
+    }
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     @media(max-width:900px){.grid{grid-template-columns:1fr}}
-    .list{display:flex;flex-direction:column;gap:8px}
-    .item{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid #2a3358;border-radius:12px;background:#0e1324}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select{
+      width:100%;
+      padding:14px 14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:#0b1028;
+      color:var(--fg);
+      font-size:18px;
+      outline:none;
+    }
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .sp{height:12px}
+
+    /* LOBBY */
+    .center{
+      min-height:68vh;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      gap:16px;
+    }
+    .code{
+      font-size:96px;
+      font-weight:1000;
+      letter-spacing:.18em;
+      line-height:1;
+      text-shadow:0 12px 70px rgba(110,123,255,.35);
+    }
+    .hint{font-size:18px;color:var(--muted)}
+    .startBtn{font-size:24px;padding:18px 22px;border-radius:18px}
+
+    /* Players list */
+    .plist{max-width:700px;width:100%;margin-top:10px}
+    .pitem{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:12px 14px;border:1px solid var(--line);border-radius:14px;
+      background:#0b1028;
+      font-size:20px;
+    }
+
+    /* LIVE GAME */
+    .live{
+      position:fixed;inset:0;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      gap:14px;
+      padding:24px;
+      background:radial-gradient(900px 500px at 50% 30%, rgba(110,123,255,.22), transparent 70%) , var(--bg);
+    }
+    .phase{
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    .timer{
+      font-size:140px;
+      font-weight:1000;
+      letter-spacing:.06em;
+      line-height:1;
+    }
+    .announce{
+      max-width:1100px;
+      width:100%;
+      text-align:center;
+      font-size:28px;
+      font-weight:800;
+      padding:16px 18px;
+      border-radius:18px;
+      border:1px solid var(--line);
+      background:rgba(15,20,48,.75);
+      backdrop-filter: blur(6px);
+    }
+
+    /* visibility helpers */
+    .hidden{display:none !important}
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="top">
       <div>
-        <div class="big">SHADOW CITY — HOST</div>
-        <div class="muted">Otomatik akış • TV/PC</div>
+        <div class="title">SHADOW CITY — HOST</div>
+        <div class="muted">TV/PC sunucu ekranı</div>
       </div>
-      <div class="row">
-        <a class="pill" href="./index.html" style="color:#e9ecff;text-decoration:none">↩ Menü</a>
-      </div>
+      <a class="muted" href="./index.html">↩ Ana Menü</a>
     </div>
 
-    <div style="height:12px"></div>
+    <div class="sp"></div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="row" style="align-items:flex-end">
-          <div style="flex:1">
-            <label>Host adı</label><br/>
-            <input id="hostName" value="HOST"/>
-          </div>
-          <button class="btn primary" id="btnCreate">Oda Oluştur</button>
-          <button class="btn" id="btnStart" disabled>Oyunu Başlat</button>
+    <!-- SETUP MODE -->
+    <section class="card" id="setupView">
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:1;min-width:260px">
+          <label>Host adı</label>
+          <input id="hostName" value="HOST"/>
+        </div>
+        <button class="btn primary" id="btnCreate">ODA OLUŞTUR</button>
+      </div>
+
+      <div class="sp"></div>
+
+      <div class="grid">
+        <div>
+          <label>Katil sayısı</label>
+          <select id="killerCount">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+        <div>
+          <label>Tartışma süresi (sn)</label>
+          <input id="discussionSec" value="300"/>
         </div>
 
-        <div style="height:12px"></div>
-        <div class="row">
-          <div class="pill">Oda Kodu: <strong id="roomCode">—</strong></div>
-          <div class="pill">Faz: <strong id="phase">—</strong></div>
-          <div class="pill">Gün: <strong id="day">—</strong></div>
+        <div>
+          <label>Doktor</label>
+          <select id="includeDoctor">
+            <option value="true" selected>Var</option>
+            <option value="false">Yok</option>
+          </select>
+        </div>
+        <div>
+          <label>Oylama süresi (sn)</label>
+          <input id="voteSec" value="45"/>
         </div>
 
-        <div style="height:14px"></div>
-        <div class="timer" id="timer">--:--</div>
-        <div class="muted" id="hostText">Oda oluştur.</div>
-
-        <div style="height:14px"></div>
-        <div class="row">
-          <div>
-            <label>Tartışma (sn)</label><br/>
-            <input id="discussionSec" value="300"/>
-          </div>
-          <div>
-            <label>Oylama (sn)</label><br/>
-            <input id="voteSec" value="45"/>
-          </div>
-          <div>
-            <label>Gece rol süresi (sn)</label><br/>
-            <input id="nightSec" value="35"/>
-          </div>
+        <div>
+          <label>Dedektif</label>
+          <select id="includeDetective">
+            <option value="true" selected>Var</option>
+            <option value="false">Yok</option>
+          </select>
+        </div>
+        <div>
+          <label>Gece rol süresi (sn)</label>
+          <input id="nightSec" value="35"/>
         </div>
 
-        <div style="height:10px"></div>
-        <div class="row">
-          <div>
-            <label>Katil sayısı</label><br/>
-            <select id="killerCount">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-            </select>
-          </div>
-          <div>
-            <label>Doktor</label><br/>
-            <select id="includeDoctor">
-              <option value="true" selected>Var</option>
-              <option value="false">Yok</option>
-            </select>
-          </div>
-          <div>
-            <label>Dedektif</label><br/>
-            <select id="includeDetective">
-              <option value="true" selected>Var</option>
-              <option value="false">Yok</option>
-            </select>
-          </div>
+        <div>
+          <label>Katil “NO KILL”</label>
+          <select id="allowNoKill">
+            <option value="true" selected>Açık</option>
+            <option value="false">Kapalı</option>
+          </select>
         </div>
-
-        <div style="height:10px"></div>
-        <div class="row">
-          <div>
-            <label>Katil “NO KILL”</label><br/>
-            <select id="allowNoKill">
-              <option value="true" selected>Açık</option>
-              <option value="false">Kapalı</option>
-            </select>
-          </div>
-          <div>
-            <label>Doktor self-protect</label><br/>
-            <select id="doctorSelfSaveMax">
-              <option value="0">0</option>
-              <option value="1" selected>1</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="height:10px"></div>
-        <div class="muted" style="font-size:12px">
-          Oyun başladıktan sonra buraya dokunmana gerek yok. TV konuşur, fazlar otomatik akar.
+        <div>
+          <label>Doktor self-protect</label>
+          <select id="doctorSelfSaveMax">
+            <option value="0">0</option>
+            <option value="1" selected>1</option>
+          </select>
         </div>
       </div>
 
-      <div class="card">
-        <div class="big">Oyuncular</div>
-        <div class="muted" style="margin:6px 0 10px 0">Telefon: <strong>/player.html</strong></div>
-        <div class="list" id="playersList"></div>
+      <div class="sp"></div>
+      <div class="muted">Oda kurulduktan sonra ekranda dev oda kodu görünecek.</div>
+    </section>
+
+    <!-- LOBBY MODE -->
+    <section class="card hidden" id="lobbyView">
+      <div class="center">
+        <div class="muted" style="font-size:18px">ODA KODU</div>
+        <div class="code" id="roomCode">—</div>
+        <div class="hint">Oyuncular <strong>/player.html</strong> adresinden girsin</div>
+
+        <button class="btn primary startBtn" id="btnStart" disabled>OYUNU BAŞLAT</button>
+
+        <div class="plist">
+          <div class="muted" style="font-size:16px;margin:10px 0">Katılan Oyuncular</div>
+          <div id="playersList" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+
+        <div class="muted" id="hostText">Oyuncuları bekliyoruz…</div>
+
+        <!-- Hidden fields required by JS (phase/day/timer still exist) -->
+        <div class="hidden">
+          <span id="phase">—</span>
+          <span id="day">—</span>
+          <span id="timer">--:--</span>
+        </div>
       </div>
+    </section>
+  </div>
+
+  <!-- LIVE GAME FULLSCREEN -->
+  <div class="live hidden" id="liveView" aria-live="polite">
+    <div class="phase">
+      <span id="phaseLive">—</span>
+      <span class="muted">• Gün</span> <span id="dayLive">—</span>
     </div>
+    <div class="timer" id="timer">--:--</div>
+    <div class="announce" id="hostText">—</div>
+
+    <!-- keep roomCode for consistency (not shown) -->
+    <div class="hidden" id="roomCodeText"></div>
+    <div class="hidden" id="playersListLive"></div>
   </div>
 
   <script type="module">
@@ -159,12 +265,18 @@
     let settings = null;
     let state = null;
     let tickHandle = null;
-    let lastSpokenMark = new Set(); // timer konuşma tekrarını engelle
+    let lastSpokenMark = new Set();
+
+    function showMode(mode){
+      // mode: setup | lobby | live
+      el("setupView").classList.toggle("hidden", mode !== "setup");
+      el("lobbyView").classList.toggle("hidden", mode !== "lobby");
+      el("liveView").classList.toggle("hidden", mode !== "live");
+    }
 
     function uiText(t, speak=false){
       el("hostText").textContent = t;
       if (speak) speakTR(t);
-      // DB'ye de yazalım (player'lar görsün)
       if (roomCode) update(stateRef(roomCode), { hostText: t }).catch(()=>{});
     }
 
@@ -181,76 +293,84 @@
         discussionSec: clampInt(el("discussionSec").value, 30, 3600, 300),
         voteSec: clampInt(el("voteSec").value, 10, 600, 45),
         nightSec: clampInt(el("nightSec").value, 10, 600, 35),
-
         killerCount: clampInt(el("killerCount").value, 1, 6, 1),
         includeDoctor: el("includeDoctor").value === "true",
         includeDetective: el("includeDetective").value === "true",
-
         allowNoKill: el("allowNoKill").value === "true",
         doctorSelfSaveMax: clampInt(el("doctorSelfSaveMax").value, 0, 2, 1),
-
-        // oyun bitmeden rol açıklama yok (sabit)
         revealDeadRoleDuringGame: false,
       };
-    }
-
-    async function createRoom(){
-      await ensureAuth();
-      roomCode = generateRoomCode(6);
-      el("roomCode").textContent = roomCode;
-
-      const hostName = el("hostName").value || "HOST";
-      const me = await joinRoomAsHost(roomCode, hostName);
-
-      settings = readSettingsUI();
-      await set(settingsRef(roomCode), {
-        creatorUid: me.uid,
-        createdAt: nowMs(),
-        ...settings
-      });
-
-      await set(stateRef(roomCode), {
-        phase: PHASE.WAITING,
-        day: 0,
-        hostText: "Oyuncuların katılmasını bekliyoruz.",
-        endsAt: null,
-        awakeRole: null
-      });
-
-      // reset nodes
-      await set(ref(db, `rooms/${roomCode}/requests`), null);
-      await set(ref(db, `rooms/${roomCode}/voting`), null);
-      await set(ref(db, `rooms/${roomCode}/night`), null);
-      await set(ref(db, `rooms/${roomCode}/secret/roles`), null);
-
-      el("btnStart").disabled = false;
-      uiText(`Oda hazır. Kod: ${roomCode}. Oyuncular /player.html'den girsin.`, true);
-
-      // listeners
-      listen(playersRef(roomCode), (v)=>{ players = v||{}; renderPlayers(); });
-      listen(stateRef(roomCode), (v)=>{ state = v||{}; el("phase").textContent = state.phase||"—"; el("day").textContent = state.day ?? "—"; });
-    }
-
-    function renderPlayers(){
-      const list = el("playersList");
-      const entries = Object.entries(players||{}).filter(([,p])=>p && !p.isHost);
-      if (!entries.length){
-        list.innerHTML = `<div class="item"><div class="muted">Henüz oyuncu yok.</div></div>`;
-        return;
-      }
-      list.innerHTML = entries.map(([uid,p])=>{
-        const st = p.alive ? "🟢" : "⚫";
-        return `<div class="item">
-          <div><strong>${escapeHtml(p.name||"Oyuncu")}</strong><div class="muted" style="font-size:12px">${uid.slice(0,6)}…</div></div>
-          <div>${st}</div>
-        </div>`;
-      }).join("");
     }
 
     function escapeHtml(s){
       return String(s||"")
         .replaceAll("&","&amp;").replaceAll("<","&lt;")
         .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+    }
+
+    function renderPlayers(){
+      const list = el("playersList");
+      const entries = Object.entries(players||{}).filter(([,p])=>p && !p.isHost);
+      if (!entries.length){
+        list.innerHTML = `<div class="pitem"><span class="muted">Henüz oyuncu yok</span></div>`;
+        el("btnStart").disabled = true;
+        return;
+      }
+      list.innerHTML = entries
+        .map(([,p])=>`<div class="pitem"><strong>${escapeHtml(p.name||"Oyuncu")}</strong></div>`)
+        .join("");
+      // en az 3 oyuncu ile başlat
+      el("btnStart").disabled = entries.length < 3;
+    }
+
+    function applyStateToView(){
+      const phase = state?.phase || "—";
+      const day = state?.day ?? "—";
+
+      // Lobby'de küçük alanlar
+      el("phase").textContent = phase;
+      el("day").textContent = day;
+
+      // Live header
+      el("phaseLive").textContent = phase;
+      el("dayLive").textContent = day;
+
+      // mode logic:
+      // - setup: roomCode null
+      // - lobby: roomCode set && (phase waiting && day 0)
+      // - live: oyun başladı => day >= 1 veya phase != waiting
+      if (!roomCode) showMode("setup");
+      else if ((phase === PHASE.WAITING || phase === "waiting") && Number(day) === 0) showMode("lobby");
+      else showMode("live");
+    }
+
+    async function createRoom(){
+      await ensureAuth();
+      roomCode = generateRoomCode(6);
+
+      el("roomCode").textContent = roomCode; // lobby
+      el("roomCodeText").textContent = roomCode;
+
+      const hostName = el("hostName").value || "HOST";
+      const me = await joinRoomAsHost(roomCode, hostName);
+
+      settings = readSettingsUI();
+      await set(settingsRef(roomCode), { creatorUid: me.uid, createdAt: nowMs(), ...settings });
+
+      await set(stateRef(roomCode), { phase: PHASE.WAITING, day: 0, hostText: "Oyuncuları bekliyoruz…", endsAt: null, awakeRole: null });
+
+      await set(ref(db, `rooms/${roomCode}/requests`), null);
+      await set(ref(db, `rooms/${roomCode}/voting`), null);
+      await set(ref(db, `rooms/${roomCode}/night`), null);
+      await set(ref(db, `rooms/${roomCode}/secret/roles`), null);
+
+      uiText(`Oda hazır. Kod: ${roomCode}`, true);
+
+      // listeners
+      listen(playersRef(roomCode), (v)=>{ players = v||{}; renderPlayers(); });
+      listen(stateRef(roomCode), (v)=>{ state = v||{}; applyStateToView(); });
+
+      showMode("lobby");
     }
 
     async function startGameOnce(){
@@ -265,106 +385,34 @@
         return;
       }
 
-      // roles dağıt
       const deck = makeRoleDeck(alive, settings);
       const batch = {};
 
-      // oyuncuları resetle
       for (const uid of alive){
         batch[`rooms/${roomCode}/players/${uid}/alive`] = true;
         batch[`rooms/${roomCode}/players/${uid}/doctorSelfProtectUsed`] = 0;
       }
-      // secret roles
       alive.forEach((uid,i)=>{
-        batch[`rooms/${roomCode}/secret/roles/${uid}`] = {
-          role: deck[i],
-          inbox: { t: nowMs(), msg: "Rolün dağıtıldı. Oyunu takip et." }
-        };
+        batch[`rooms/${roomCode}/secret/roles/${uid}`] = { role: deck[i], inbox: { t: nowMs(), msg: "Rolün dağıtıldı. Oyunu takip et." } };
       });
 
-      // reset gameplay nodes
       batch[`rooms/${roomCode}/requests`] = null;
       batch[`rooms/${roomCode}/voting`] = null;
       batch[`rooms/${roomCode}/night`] = null;
 
       await update(ref(db,"/"), batch);
 
-      // discussion day1
-      await enterPhase(PHASE.DISCUSSION, settings.discussionSec, {
-        day: 1,
-        awakeRole: null,
-        hostText: `Gün 1 başladı. Tartışma zamanı. (${settings.discussionSec} sn)`
-      });
-
+      await enterPhase(PHASE.DISCUSSION, settings.discussionSec, { day: 1, awakeRole: null, hostText: `Gün 1 başladı. Tartışma zamanı.` });
       uiText("Gün bir. Tartışma başladı.", true);
 
-      // otomatik tick loop başlat
       startTickLoop();
-      el("btnStart").disabled = true;
-      el("btnCreate").disabled = true;
+      applyStateToView();
     }
 
     async function enterPhase(phase, durationSec, extra={}){
       const endsAt = durationSec ? (nowMs() + durationSec*1000) : null;
-      await update(stateRef(roomCode), {
-        phase,
-        endsAt,
-        ...extra
-      });
-      // yeni fazda “konuşma işaretleri” sıfırlansın
+      await update(stateRef(roomCode), { phase, endsAt, ...extra });
       lastSpokenMark.clear();
-    }
-
-    function startTickLoop(){
-      if (tickHandle) return;
-      tickHandle = setInterval(async ()=>{
-        if (!roomCode) return;
-
-        // Timer UI
-        const endsAt = state?.endsAt ?? null;
-        const remain = endsAt ? (endsAt - nowMs()) : null;
-        el("timer").textContent = endsAt ? fmt(remain) : "--:--";
-
-        // TTS reminder (only discussion/voting)
-        if (endsAt && remain != null && remain > 0){
-          const sec = Math.ceil(remain/1000);
-          // 60sn
-          if (sec === 60 && !lastSpokenMark.has("60")){
-            lastSpokenMark.add("60");
-            speakTR("Bir dakika kaldı.");
-          }
-          // 10sn
-          if (sec === 10 && !lastSpokenMark.has("10")){
-            lastSpokenMark.add("10");
-            speakTR("On saniye.");
-          }
-        }
-
-        // Majority requests during discussion
-        if (state?.phase === PHASE.DISCUSSION){
-          await maybeStartVotingByMajority();
-          await maybeFastNightByMajority();
-        }
-
-        // Phase auto advance by time
-        if (endsAt && nowMs() >= endsAt){
-          await advanceByTimeout();
-        }
-
-        // Night stage auto advance if all actors acted
-        if (state?.phase === PHASE.NIGHT_KILL) await maybeAdvanceNightIfComplete("kill");
-        if (state?.phase === PHASE.NIGHT_DOCTOR) await maybeAdvanceNightIfComplete("protect");
-        if (state?.phase === PHASE.NIGHT_DETECTIVE) await maybeAdvanceNightIfComplete("investigate");
-
-        // Voting can end early if all alive voted
-        if (state?.phase === PHASE.VOTING) await maybeEndVotingIfAllVoted();
-
-      }, 250);
-    }
-
-    async function readRoles(){
-      const snap = await get(ref(db, `rooms/${roomCode}/secret/roles`));
-      return snap.exists() ? snap.val() : {};
     }
 
     async function maybeStartVotingByMajority(){
@@ -376,14 +424,10 @@
       const count = Object.keys(req||{}).length;
 
       if (count >= maj){
-        // start voting
         settings = (await get(settingsRef(roomCode))).val() || settings;
         await set(votingVotesRef(roomCode), null);
         await set(requestsVoteRef(roomCode), null);
-        await enterPhase(PHASE.VOTING, settings.voteSec, {
-          hostText: `Oylama başladı. (${settings.voteSec} sn)`,
-          awakeRole: null
-        });
+        await enterPhase(PHASE.VOTING, settings.voteSec, { hostText: `Oylama başladı.`, awakeRole: null });
         uiText("Oylama başladı.", true);
       }
     }
@@ -402,58 +446,30 @@
       }
     }
 
-    async function advanceByTimeout(){
-      switch(state?.phase){
-        case PHASE.DISCUSSION:
-          await startNightSequence();
-          break;
-        case PHASE.VOTING:
-          await resolveVotingAndGoNight();
-          break;
-        case PHASE.NIGHT_KILL:
-        case PHASE.NIGHT_DOCTOR:
-        case PHASE.NIGHT_DETECTIVE:
-          await advanceNightStage(); // süre dolduysa bir sonraki role geç
-          break;
-        case PHASE.MORNING:
-          // morning kısa; buraya pek gelmez
-          break;
-      }
-    }
-
     async function startNightSequence(){
       settings = (await get(settingsRef(roomCode))).val() || settings;
       await set(ref(db, `rooms/${roomCode}/night/actions`), null);
       await set(ref(db, `rooms/${roomCode}/requests`), null);
 
-      // kill stage
-      await enterPhase(PHASE.NIGHT_KILL, settings.nightSec, {
-        hostText: "Gece oldu. Katiller uyanıyor.",
-        awakeRole: ROLES.KILLER
-      });
+      await enterPhase(PHASE.NIGHT_KILL, settings.nightSec, { hostText: "Gece oldu. Katiller uyanıyor.", awakeRole: ROLES.KILLER });
       uiText("Gece oldu. Katiller uyanıyor. Kurban seçin.", true);
     }
 
+    async function readRoles(){
+      const snap = await get(ref(db, `rooms/${roomCode}/secret/roles`));
+      return snap.exists() ? snap.val() : {};
+    }
+
     async function maybeAdvanceNightIfComplete(kind){
-      // kind: kill/protect/investigate
       const roles = await readRoles();
       const alive = aliveUids(players);
-
       const actors = alive.filter(uid => roles?.[uid]?.role === roleForKind(kind));
-      if (!actors.length){
-        // bu rolden kimse yoksa direkt ilerle
-        await advanceNightStage();
-        return;
-      }
+      if (!actors.length){ await advanceNightStage(); return; }
 
       const actionsSnap = await get(ref(db, `rooms/${roomCode}/night/actions/${kind}`));
       const actions = actionsSnap.exists() ? actionsSnap.val() : {};
-
-      // tamam sayılması için tüm aktörler aksiyon göndermiş olmalı
       const done = actors.every(uid => !!actions?.[uid]);
-      if (done){
-        await advanceNightStage();
-      }
+      if (done) await advanceNightStage();
     }
 
     function roleForKind(kind){
@@ -463,48 +479,44 @@
       return null;
     }
 
+    async function advanceByTimeout(){
+      switch(state?.phase){
+        case PHASE.DISCUSSION: await startNightSequence(); break;
+        case PHASE.VOTING: await resolveVotingAndGoNight(); break;
+        case PHASE.NIGHT_KILL:
+        case PHASE.NIGHT_DOCTOR:
+        case PHASE.NIGHT_DETECTIVE: await advanceNightStage(); break;
+      }
+    }
+
     async function advanceNightStage(){
       settings = (await get(settingsRef(roomCode))).val() || settings;
+
       if (state?.phase === PHASE.NIGHT_KILL){
-        // doctor varsa
         if (settings.includeDoctor){
-          await enterPhase(PHASE.NIGHT_DOCTOR, settings.nightSec, {
-            hostText: "Doktor uyanıyor.",
-            awakeRole: ROLES.DOCTOR
-          });
+          await enterPhase(PHASE.NIGHT_DOCTOR, settings.nightSec, { hostText:"Doktor uyanıyor.", awakeRole: ROLES.DOCTOR });
           uiText("Doktor uyan. Birini koru.", true);
           return;
         }
-        // yoksa detective
         if (settings.includeDetective){
-          await enterPhase(PHASE.NIGHT_DETECTIVE, settings.nightSec, {
-            hostText: "Dedektif uyanıyor.",
-            awakeRole: ROLES.DETECTIVE
-          });
+          await enterPhase(PHASE.NIGHT_DETECTIVE, settings.nightSec, { hostText:"Dedektif uyanıyor.", awakeRole: ROLES.DETECTIVE });
           uiText("Dedektif uyan. Birini sorgula.", true);
           return;
         }
-        // hiçbiri yoksa sabah çöz
-        await resolveNightAndGoMorning();
-        return;
+        await resolveNightAndGoMorning(); return;
       }
 
       if (state?.phase === PHASE.NIGHT_DOCTOR){
         if (settings.includeDetective){
-          await enterPhase(PHASE.NIGHT_DETECTIVE, settings.nightSec, {
-            hostText: "Dedektif uyanıyor.",
-            awakeRole: ROLES.DETECTIVE
-          });
+          await enterPhase(PHASE.NIGHT_DETECTIVE, settings.nightSec, { hostText:"Dedektif uyanıyor.", awakeRole: ROLES.DETECTIVE });
           uiText("Dedektif uyan. Birini sorgula.", true);
           return;
         }
-        await resolveNightAndGoMorning();
-        return;
+        await resolveNightAndGoMorning(); return;
       }
 
       if (state?.phase === PHASE.NIGHT_DETECTIVE){
-        await resolveNightAndGoMorning();
-        return;
+        await resolveNightAndGoMorning(); return;
       }
     }
 
@@ -512,104 +524,71 @@
       const roles = await readRoles();
       settings = (await get(settingsRef(roomCode))).val() || settings;
 
-      // read actions
       const [killSnap, protectSnap, invSnap] = await Promise.all([
         get(nightActionsKillRef(roomCode)),
         get(nightActionsProtectRef(roomCode)),
         get(nightActionsInvestigateRef(roomCode)),
       ]);
+
       const killMap = killSnap.exists() ? killSnap.val() : {};
       const protectMap = protectSnap.exists() ? protectSnap.val() : {};
       const investigateMap = invSnap.exists() ? invSnap.val() : {};
 
-      // doctor self-protect limit enforce (host-side)
       for (const [docUid, targetUid] of Object.entries(protectMap||{})){
         if (docUid === targetUid){
           const used = Number(players?.[docUid]?.doctorSelfProtectUsed || 0);
           if (used >= (settings.doctorSelfSaveMax ?? 1)){
-            // hakkı yoksa korumayı geçersiz say
             protectMap[docUid] = null;
           } else {
-            // hakkı varsa tüket
             await update(playerRef(roomCode, docUid), { doctorSelfProtectUsed: used + 1 });
           }
         }
       }
 
-      // resolve
-      const res = resolveNight({
-        playersObj: players,
-        rolesByUid: roles,
-        killMap,
-        protectMap,
-        settings
-      });
+      const res = resolveNight({ playersObj: players, rolesByUid: roles, killMap, protectMap, settings });
 
-      // apply death
       let deadUid = null;
       if (res.diedUid){
         deadUid = res.diedUid;
         await update(playerRef(roomCode, deadUid), { alive:false, diedAt: nowMs() });
       }
 
-      // detective inbox
       for (const [detUid, targetUid] of Object.entries(investigateMap||{})){
         if (!targetUid) continue;
         const role = roles?.[targetUid]?.role || "UNKNOWN";
         const targetName = players?.[targetUid]?.name || "Oyuncu";
-        await update(secretRoleRef(roomCode, detUid), {
-          inbox: { t: nowMs(), msg: `${targetName} rolü: ${ROLE_TR[role] || role}` }
-        });
+        await update(secretRoleRef(roomCode, detUid), { inbox: { t: nowMs(), msg: `${targetName} rolü: ${ROLE_TR[role] || role}` } });
       }
 
-      // win check (fresh players)
       const freshPlayersSnap = await get(playersRef(roomCode));
       const freshPlayers = freshPlayersSnap.exists() ? freshPlayersSnap.val() : players;
 
       const win = computeWin(freshPlayers, roles);
       if (win.ended){
-        const msg = (win.winner==="TOWN")
-          ? "Oyun bitti. Masumlar kazandı."
-          : "Oyun bitti. Katiller kazandı.";
+        const msg = (win.winner==="TOWN") ? "Oyun bitti. Masumlar kazandı." : "Oyun bitti. Katiller kazandı.";
         await enterPhase(PHASE.ENDED, 0, { hostText: msg, awakeRole:null, endsAt:null });
         uiText(msg, true);
         return;
       }
 
-      // morning announce
       const deadName = deadUid ? (freshPlayers?.[deadUid]?.name || "Bir oyuncu") : null;
-      const morning = deadUid
-        ? `Sabah oldu. Dün gece ${deadName} ölü bulundu.`
-        : "Sabah oldu. Bu gece kimse ölmedi.";
-
-      await enterPhase(PHASE.MORNING, 3, {
-        hostText: morning,
-        awakeRole: null,
-        endsAt: nowMs()+3000
-      });
+      const morning = deadUid ? `Sabah oldu. Dün gece ${deadName} ölü bulundu.` : "Sabah oldu. Bu gece kimse ölmedi.";
+      await enterPhase(PHASE.MORNING, 3, { hostText: morning, awakeRole:null, endsAt: nowMs()+3000 });
       uiText(morning, true);
 
-      // go discussion
       const nextDay = (state?.day ?? 1) + 1;
       setTimeout(async ()=>{
         settings = (await get(settingsRef(roomCode))).val() || settings;
-        await enterPhase(PHASE.DISCUSSION, settings.discussionSec, {
-          day: nextDay,
-          hostText: `Gün ${nextDay}: Tartışma başladı. (${settings.discussionSec} sn)`,
-          awakeRole: null
-        });
+        await enterPhase(PHASE.DISCUSSION, settings.discussionSec, { day: nextDay, hostText: `Gün ${nextDay} başladı. Tartışma zamanı.`, awakeRole:null });
         uiText(`Gün ${nextDay}. Tartışma başladı.`, true);
       }, 3100);
     }
 
     async function maybeEndVotingIfAllVoted(){
-      const roles = await readRoles();
       const alive = aliveUids(players);
       const votesSnap = await get(votingVotesRef(roomCode));
       const votes = votesSnap.exists() ? votesSnap.val() : {};
-      const votedCount = Object.keys(votes||{}).length;
-
-      if (votedCount >= alive.length && alive.length > 0){
+      if (Object.keys(votes||{}).length >= alive.length && alive.length>0){
         await resolveVotingAndGoNight();
       }
     }
@@ -634,7 +613,6 @@
       const name = players?.[best]?.name || "Oyuncu";
       await update(playerRef(roomCode, best), { alive:false, eliminatedAt: nowMs() });
 
-      // win check after elimination
       const roles = await readRoles();
       const freshPlayersSnap = await get(playersRef(roomCode));
       const freshPlayers = freshPlayersSnap.exists() ? freshPlayersSnap.val() : players;
@@ -649,13 +627,52 @@
         return;
       }
 
-      uiText(`${name} elendi. (Rol açıklanmadı.) Geceye geçiliyor.`, true);
+      uiText(`${name} elendi. Rol açıklanmadı. Geceye geçiliyor.`, true);
       await startNightSequence();
+    }
+
+    function startTickLoop(){
+      if (tickHandle) return;
+      tickHandle = setInterval(async ()=>{
+        if (!roomCode) return;
+
+        const endsAt = state?.endsAt ?? null;
+        const remain = endsAt ? (endsAt - nowMs()) : null;
+        el("timer").textContent = endsAt ? fmt(remain) : "--:--";
+
+        // phase/day live header sync
+        el("phaseLive").textContent = state?.phase || "—";
+        el("dayLive").textContent = state?.day ?? "—";
+
+        if (endsAt && remain != null && remain > 0){
+          const sec = Math.ceil(remain/1000);
+          if (sec === 60 && !lastSpokenMark.has("60")){ lastSpokenMark.add("60"); speakTR("Bir dakika kaldı."); }
+          if (sec === 10 && !lastSpokenMark.has("10")){ lastSpokenMark.add("10"); speakTR("On saniye."); }
+        }
+
+        if (state?.phase === PHASE.DISCUSSION){
+          await maybeStartVotingByMajority();
+          await maybeFastNightByMajority();
+        }
+
+        if (endsAt && nowMs() >= endsAt){
+          await advanceByTimeout();
+        }
+
+        if (state?.phase === PHASE.NIGHT_KILL) await maybeAdvanceNightIfComplete("kill");
+        if (state?.phase === PHASE.NIGHT_DOCTOR) await maybeAdvanceNightIfComplete("protect");
+        if (state?.phase === PHASE.NIGHT_DETECTIVE) await maybeAdvanceNightIfComplete("investigate");
+
+        if (state?.phase === PHASE.VOTING) await maybeEndVotingIfAllVoted();
+
+      }, 250);
     }
 
     el("btnCreate").addEventListener("click", createRoom);
     el("btnStart").addEventListener("click", startGameOnce);
 
+    // initial
+    showMode("setup");
     ensureAuth().then(()=> uiText("Giriş hazır. Oda oluştur.", false));
   </script>
 </body>
