@@ -1,417 +1,85 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gölge Şehir - v0.3</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #050510;
-            --card-bg: rgba(20, 20, 40, 0.9);
-            --neon-blue: #00f7ff;
-            --neon-purple: #bc13fe;
-            --neon-red: #ff3333;
-            --text-color: #e0e0ff;
-            --font-family: 'Montserrat', sans-serif;
-        }
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
 
-        body {
-            font-family: var(--font-family);
-            background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
+    "rooms": {
+      "$roomCode": {
+        // Oda içindeki verileri okuyabilmek için:
+        // kullanıcı o odada players altında kayıtlı olmalı (host da kayıtlı olacak)
+        ".read": "auth != null && data.child('players').child(auth.uid).exists()",
+        ".write": "auth != null && data.child('players').child(auth.uid).exists()",
 
-        /* HOST EKRANI */
-        #host-screen {
-            width: 90%;
-            max-width: 800px;
-            border: 2px solid var(--neon-blue);
-            padding: 30px;
-            text-align: center;
-            margin-bottom: 40px;
-            background-color: rgba(0, 0, 0, 0.8);
-            box-shadow: 0 0 20px rgba(0, 247, 255, 0.2);
-            border-radius: 15px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        /* Host Arka Plan Efekti */
-        #host-screen::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 5px;
-            background: var(--neon-blue);
-            box-shadow: 0 0 15px var(--neon-blue);
-            animation: scanline 3s infinite linear;
-        }
+        "settings": {
+          // settings sadece host tarafından yazılır (oda kurulumu + ayarlar)
+          ".write": "auth != null && data.parent().child('settings').child('creatorUid').val() === auth.uid"
+        },
 
-        @keyframes scanline {
-            0% { top: 0; opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
+        "players": {
+          "$uid": {
+            // Her oyuncu kendi kaydını oluşturabilir/ güncelleyebilir
+            ".write": "auth != null && $uid === auth.uid",
+            ".read": "auth != null && data.parent().child(auth.uid).exists()"
+          }
+        },
 
-        h1 {
-            color: #fff;
-            margin: 0 0 10px 0;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-            font-size: 2.5em;
-            text-shadow: 0 0 10px var(--neon-blue);
-        }
-
-        #status-text { font-size: 1.4em; margin: 20px 0; color: #aaa; min-height: 1.5em;}
-        #timer { font-size: 3.5em; font-weight: bold; color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple); }
-
-        .main-btn {
-            padding: 15px 40px;
-            font-size: 1.2em;
-            font-weight: bold;
-            cursor: pointer;
-            border: 2px solid var(--neon-purple);
-            background: transparent;
-            color: var(--neon-purple);
-            border-radius: 5px;
-            transition: 0.3s;
-            box-shadow: 0 0 10px var(--neon-purple);
-            font-family: var(--font-family);
-        }
-        .main-btn:hover { background: var(--neon-purple); color: #fff; box-shadow: 0 0 25px var(--neon-purple); }
-
-        /* OYUNCU ALANI */
-        .players-container {
-            display: flex;
-            gap: 20px;
-            width: 100%;
-            max-width: 1200px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .player-device {
-            width: 300px;
-            height: 520px; /* Telefon oranı */
-            border: 1px solid #444;
-            border-radius: 20px;
-            background-color: var(--card-bg);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s;
-        }
-
-        /* Rol Renkleri */
-        .device-killer { border-color: var(--neon-red); box-shadow: 0 0 15px rgba(255, 51, 51, 0.2); }
-        .device-detective { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 247, 255, 0.2); }
-        .device-citizen { border-color: #aaa; }
-
-        .role-badge {
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 0.9em;
-            font-weight: bold;
-            align-self: flex-start;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .badge-killer { background: var(--neon-red); color: #000; box-shadow: 0 0 10px var(--neon-red); }
-        .badge-detective { background: var(--neon-blue); color: #000; box-shadow: 0 0 10px var(--neon-blue); }
-        .badge-citizen { background: #555; color: #ddd; }
-
-        h3 { font-size: 1.6em; margin-bottom: 10px; color: #fff; }
-        p { font-size: 1em; color: #ccc; line-height: 1.4; }
-
-        /* Form Elemanları */
-        select {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 20px;
-            background-color: rgba(0,0,0,0.6);
-            border: 1px solid #666;
-            color: #fff;
-            font-size: 1em;
-            border-radius: 5px;
-            font-family: var(--font-family);
-        }
-        
-        .action-btn {
-            margin-top: auto;
-            padding: 15px;
-            border: none;
-            color: white;
-            font-size: 1.1em;
-            cursor: pointer;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        .btn-kill { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
-        .btn-investigate { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
-        .btn-kill:hover:not(:disabled) { background: #ff0000; box-shadow: 0 0 20px var(--neon-red); }
-        .btn-investigate:hover:not(:disabled) { background: #00d4ff; box-shadow: 0 0 20px var(--neon-blue); }
-        .action-btn:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; }
-
-        .log-area { margin-top: 15px; font-size: 0.9em; color: #888; min-height: 20px; }
-
-        /* KARARTMA PERDESİ */
-        .blackout {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            text-align: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.8s;
-        }
-        .blackout.active { opacity: 1; pointer-events: all; }
-        .blackout div { font-size: 1.5em; color: #555; letter-spacing: 2px; }
-
-    </style>
-</head>
-<body>
-
-    <div id="host-screen">
-        <h1>GÖLGE ŞEHİR</h1>
-        <div id="timer">HAZIR</div>
-        <div id="status-text">Roller dağıtılıyor...</div>
-        <button onclick="startGame()" class="main-btn" id="start-btn">OYUNU BAŞLAT</button>
-    </div>
-
-    <div class="players-container" id="device-container">
-        </div>
-
-    <script>
-        // OYUN VERİSİ
-        const totalPlayers = 3;
-        let players = []; 
-        let killerTarget = null;
-
-        // Rol Tanımları
-        const ROLES = {
-            KILLER: { name: 'Katil', class: 'badge-killer', deviceClass: 'device-killer' },
-            DETECTIVE: { name: 'Dedektif', class: 'badge-detective', deviceClass: 'device-detective' },
-            CITIZEN: { name: 'Vatandaş', class: 'badge-citizen', deviceClass: 'device-citizen' }
-        };
-
-        // 1. ADIM: OYUNU KUR (Rastgele Rol Dağıtımı)
-        function initGame() {
-            const roleDeck = [ROLES.KILLER, ROLES.DETECTIVE, ROLES.CITIZEN];
-            
-            // Diziyi karıştır (Fisher-Yates Shuffle)
-            for (let i = roleDeck.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [roleDeck[i], roleDeck[j]] = [roleDeck[j], roleDeck[i]];
+        "secret": {
+          "roles": {
+            "$uid": {
+              // Oyuncu sadece kendi rolünü okur
+              ".read": "auth != null && $uid === auth.uid",
+              // Rolleri sadece host yazar
+              ".write": "auth != null && data.parent().parent().parent().child('settings').child('creatorUid').val() === auth.uid"
             }
+          }
+        },
 
-            players = [];
-            const container = document.getElementById('device-container');
-            container.innerHTML = ''; // Temizle
+        "state": {
+          // faz/süre yönetimi host
+          ".write": "auth != null && data.parent().child('settings').child('creatorUid').val() === auth.uid"
+        },
 
-            // Oyuncuları ve Cihazları Oluştur
-            for(let i=0; i<totalPlayers; i++) {
-                const playerObj = {
-                    id: i,
-                    name: `Oyuncu ${i+1}`,
-                    roleData: roleDeck[i],
-                    isDead: false
-                };
-                players.push(playerObj);
-                createPlayerDevice(playerObj);
+        "day": {
+          "voteCall": {
+            "requests": {
+              "$uid": {
+                // oylama çağrısı: herkes kendi isteğini yazabilir
+                ".write": "auth != null && $uid === auth.uid"
+              }
             }
-            
-            document.getElementById('status-text').innerText = "Roller gizlice dağıtıldı. Başlatmayı bekliyor.";
-        }
+          }
+        },
 
-        // Cihaz HTML'ini oluştur
-        function createPlayerDevice(player) {
-            const container = document.getElementById('device-container');
-            const isKiller = player.roleData.name === 'Katil';
-            const isDetective = player.roleData.name === 'Dedektif';
-            const isCitizen = player.roleData.name === 'Vatandaş';
-
-            let actionHTML = '';
-            
-            // Sadece Katil ve Dedektif'e özel aksiyon menüsü
-            if (isKiller) {
-                actionHTML = `
-                    <h3>Hedef Seç</h3>
-                    <p>Kimse seni görmüyor. Kurbanını seç.</p>
-                    <select id="select-p${player.id}">
-                        ${getOptionsHTML(player.id)} 
-                    </select>
-                    <button class="action-btn btn-kill" id="btn-p${player.id}" onclick="submitAction(${player.id}, 'kill')">ÖLDÜR</button>
-                `;
-            } else if (isDetective) {
-                actionHTML = `
-                    <h3>Sorgula</h3>
-                    <p>Şüphelendiğin kişiyi seç.</p>
-                    <select id="select-p${player.id}">
-                        ${getOptionsHTML(player.id)}
-                    </select>
-                    <button class="action-btn btn-investigate" id="btn-p${player.id}" onclick="submitAction(${player.id}, 'investigate')">ARAŞTIR</button>
-                `;
-            } else {
-                actionHTML = `
-                    <h3>Bekle</h3>
-                    <p>Geceleyin yapabileceğin bir şey yok.</p>
-                `;
+        "voting": {
+          "votes": {
+            "$uid": {
+              // oy: herkes kendi oyunu yazar
+              ".write": "auth != null && $uid === auth.uid"
             }
+          },
+          // sonucu host yazar
+          "result": {
+            ".write": "auth != null && data.parent().parent().child('settings').child('creatorUid').val() === auth.uid"
+          }
+        },
 
-            const html = `
-                <div class="player-device ${player.roleData.deviceClass}" id="device-p${player.id}">
-                    <div class="blackout active" id="curtain-p${player.id}">
-                        <div>GECE<br>UYUYORSUNUZ...</div>
-                    </div>
-                    <span class="role-badge ${player.roleData.class}">Sen: ${player.roleData.name}</span>
-                    ${actionHTML}
-                    <div class="log-area" id="log-p${player.id}">Sıranı bekle...</div>
-                </div>
-            `;
-            container.innerHTML += html;
+        "night": {
+          "actions": {
+            // gece aksiyonlarını herkes yazamasın:
+            // burada basit tutuyoruz: host yazabilir + oyuncular kendi rol aksiyonunu yazacak (bir sonraki patchte daha da sıkılaştırırız)
+            ".write": "auth != null && data.parent().parent().child('players').child(auth.uid).exists()"
+          },
+          "results": {
+            // gece sonuçlarını host yazar, oyuncular okur
+            ".write": "auth != null && data.parent().parent().child('settings').child('creatorUid').val() === auth.uid"
+          }
+        },
+
+        "log": {
+          // log sadece host yazar, herkes okur
+          ".write": "auth != null && data.parent().child('settings').child('creatorUid').val() === auth.uid"
         }
-
-        // Dropdown için seçenekleri oluştur (Sadece isimler, roller GİZLİ)
-        function getOptionsHTML(myId) {
-            let options = '';
-            players.forEach(p => {
-                if (p.id !== myId) { // Kendini seçeme
-                    // BURASI ÖNEMLİ: Value olarak ID tutuyoruz ama ekranda sadece İSİM var. Rol yok.
-                    options += `<option value="${p.id}">${p.name}</option>`; 
-                }
-            });
-            return options;
-        }
-
-        // 2. ADIM: OYUN AKIŞI
-        function speak(text) {
-            const synth = window.speechSynthesis;
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'tr-TR'; u.rate = 0.9; u.pitch = 0.7;
-            synth.speak(u);
-            document.getElementById('status-text').innerText = text;
-        }
-
-        function startGame() {
-            document.getElementById('start-btn').style.display = 'none';
-            speak("Gölge Şehir'de akşam oluyor. Tartışma süresi başladı.");
-            
-            let seconds = 5;
-            const timerEl = document.getElementById('timer');
-            const int = setInterval(() => {
-                timerEl.innerText = `00:0${seconds}`;
-                seconds--;
-                if(seconds < 0) {
-                    clearInterval(int);
-                    timerEl.innerText = "GECE";
-                    startNight();
-                }
-            }, 1000);
-        }
-
-        function startNight() {
-            speak("Gece çöktü. Herkes uyusun.");
-            // 4 saniye sonra Katil uyansın
-            setTimeout(() => {
-                wakeRole('Katil');
-            }, 4000);
-        }
-
-        function wakeRole(roleName) {
-            // İlgili role sahip oyuncuyu bul
-            const player = players.find(p => p.roleData.name === roleName);
-            
-            if (player) {
-                // Sadece onun perdesini kaldır
-                if(roleName === 'Katil') speak("Katil uyan... Kurbanını seç.");
-                if(roleName === 'Dedektif') speak("Katil uyu... Dedektif uyan... Araştır.");
-                
-                document.getElementById(`curtain-p${player.id}`).classList.remove('active');
-            } else {
-                // Eğer o rol yoksa (veya ölmüşse) boşluk verip diğerine geç
-                setTimeout(() => nextPhase(roleName), 3000); 
-            }
-        }
-
-        function submitAction(playerId, type) {
-            const deviceBtn = document.getElementById(`btn-p${playerId}`);
-            const logArea = document.getElementById(`log-p${playerId}`);
-            
-            deviceBtn.disabled = true;
-
-            if (type === 'kill') {
-                const targetId = document.getElementById(`select-p${playerId}`).value;
-                const targetName = players[targetId].name; // Sadece isim görünür
-                
-                killerTarget = targetName;
-                logArea.innerText = `Seçim yapıldı: ${targetName}`;
-                
-                // Perdeyi kapat, Dedektifi çağır
-                setTimeout(() => {
-                    document.getElementById(`curtain-p${playerId}`).classList.add('active');
-                    wakeRole('Dedektif');
-                }, 2000);
-
-            } else if (type === 'investigate') {
-                const targetId = document.getElementById(`select-p${playerId}`).value;
-                const targetPlayer = players[targetId];
-                
-                // Dedektif mantığı: Seçilen kişinin GERÇEK rolünü kontrol et
-                let result = "TEMİZ";
-                if (targetPlayer.roleData.name === 'Katil') {
-                    result = "KATİL!";
-                }
-                
-                logArea.innerText = `RAPOR: ${targetPlayer.name} bir ${result}`;
-                
-                // Perdeyi kapat, Sabaha geç
-                setTimeout(() => {
-                    document.getElementById(`curtain-p${playerId}`).classList.add('active');
-                    startMorning();
-                }, 4000);
-            }
-        }
-
-        function startMorning() {
-            speak("Sabah oldu. Herkes uyanabilir.");
-            
-            // Tüm perdeleri aç
-            players.forEach(p => {
-                document.getElementById(`curtain-p${p.id}`).classList.remove('active');
-            });
-
-            setTimeout(() => {
-                let msg = "";
-                if (killerTarget) {
-                    msg = `Dün gece ${killerTarget} ölü bulundu.`;
-                } else {
-                    msg = "Dün gece kimse ölmedi.";
-                }
-                speak(msg);
-                document.getElementById('status-text').innerText = msg;
-                document.getElementById('start-btn').style.display = 'inline-block';
-                document.getElementById('start-btn').innerText = 'YENİ TUR / YENİ DAĞITIM';
-                document.getElementById('start-btn').onclick = function(){ location.reload(); }; 
-            }, 3000);
-        }
-
-        // Sayfa yüklenince oyunu kur
-        window.onload = initGame;
-
-    </script>
-</body>
-</html>
+      }
+    }
+  }
+}
