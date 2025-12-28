@@ -106,7 +106,7 @@
       db
     } from "./firebase.js";
 
-    import { ROLES, ROLE_LABEL_TR, ACTIONS } from "./shared.js";
+    import { ROLES, ACTIONS } from "./shared.js";
 
     let roomCode = null;
     let myUid = null;
@@ -117,6 +117,13 @@
     let myRoleObj = null;
 
     const el = (id) => document.getElementById(id);
+
+    const ROLE_LABEL_TR = {
+      CITIZEN: "Vatandaş",
+      KILLER: "Katil",
+      DETECTIVE: "Dedektif",
+      DOCTOR: "Doktor",
+    };
 
     function escapeHtml(s){
       return String(s || "")
