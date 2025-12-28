@@ -2,61 +2,120 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gölge Şehir - Prototip</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #0a0a2a; /* Koyu Mavi Arka Plan */
+            --card-bg: rgba(20, 20, 50, 0.8); /* Yarı Saydam Kart Rengi */
+            --neon-blue: #00f7ff; /* Neon Mavi */
+            --neon-purple: #bc13fe; /* Neon Mor */
+            --text-color: #e0e0ff; /* Açık Mavi/Beyaz Metin */
+            --font-family: 'Montserrat', sans-serif;
+        }
+
         body {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: #1a1a1a;
-            color: #ddd;
+            font-family: var(--font-family);
+            background: linear-gradient(135deg, #050510 0%, var(--bg-color) 100%);
+            color: var(--text-color);
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
-            padding: 20px;
+            padding: 30px;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
 
         /* HOST EKRANI STİLLERİ */
         #host-screen {
-            width: 80%;
-            border: 4px solid #c0392b; /* Kan kırmızısı */
-            padding: 20px;
+            width: 90%;
+            max-width: 800px;
+            border: 3px solid var(--neon-blue);
+            padding: 30px;
             text-align: center;
-            margin-bottom: 30px;
-            background-color: #000;
-            box-shadow: 0 0 20px rgba(192, 57, 43, 0.5);
+            margin-bottom: 40px;
+            background-color: rgba(0, 0, 20, 0.9);
+            box-shadow: 0 0 25px rgba(0, 247, 255, 0.3), inset 0 0 15px rgba(0, 247, 255, 0.1);
+            border-radius: 15px;
         }
-        h1 { color: #c0392b; margin: 0; text-transform: uppercase; letter-spacing: 5px; }
-        #status-text { font-size: 24px; margin: 20px 0; color: #fff; }
-        #timer { font-size: 48px; font-weight: bold; color: #f1c40f; }
+        h1 {
+            color: var(--neon-blue);
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-size: 3.5em;
+            text-shadow: 0 0 15px var(--neon-blue);
+        }
+        #status-text { font-size: 1.5em; margin: 25px 0; color: var(--text-color); }
+        #timer { font-size: 4em; font-weight: bold; color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple); }
+
+        /* BUTON STİLİ */
+        .main-btn, .action-btn {
+            padding: 15px 30px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-family: var(--font-family);
+        }
+        .main-btn {
+            background-color: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+        .main-btn:hover {
+            background-color: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
 
         /* OYUNCU ALANI SİMÜLASYONU */
         .players-container {
             display: flex;
-            gap: 20px;
+            gap: 30px;
             width: 100%;
+            max-width: 1200px;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         .player-device {
-            width: 300px;
-            height: 500px;
-            border: 10px solid #333;
+            width: 320px;
+            height: 550px;
+            border: 2px solid var(--neon-purple);
             border-radius: 20px;
-            background-color: #fff;
-            color: #333;
+            background-color: var(--card-bg);
+            color: var(--text-color);
             display: flex;
             flex-direction: column;
-            padding: 15px;
+            padding: 25px;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .player-device h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            color: var(--neon-blue);
+        }
+        .player-device p {
+            font-size: 1.1em;
+            line-height: 1.4;
         }
 
         /* KARARTMA PERDESİ (GECE MODU) */
         .blackout-curtain {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: black;
-            color: white;
+            background-color: #000;
+            color: var(--text-color);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -64,36 +123,67 @@
             text-align: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.5s;
+            transition: opacity 0.8s ease-in-out;
+        }
+        .blackout-curtain div {
+            font-size: 2em;
+            color: var(--neon-purple);
+            text-shadow: 0 0 10px var(--neon-purple);
         }
         .active-blackout { opacity: 1; pointer-events: all; }
 
         .role-badge {
-            background: #333; color: #fff; padding: 5px; 
-            border-radius: 5px; font-size: 12px; align-self: flex-start;
+            background: linear-gradient(45deg, var(--neon-purple), var(--neon-blue));
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 1em;
+            font-weight: bold;
+            align-self: flex-start;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 247, 255, 0.3);
+        }
+        
+        select {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: rgba(0,0,0,0.5);
+            border: 2px solid var(--neon-blue);
+            color: var(--text-color);
+            font-size: 1.1em;
+            border-radius: 8px;
+            font-family: var(--font-family);
         }
         
         .action-btn {
-            margin-top: auto;
-            padding: 15px;
-            background-color: #c0392b;
+            background-color: var(--neon-purple);
             color: white;
-            border: none;
-            font-size: 18px;
-            cursor: pointer;
-            border-radius: 5px;
+            box-shadow: 0 0 15px var(--neon-purple);
         }
-        .action-btn:disabled { background-color: #ccc; }
+        .action-btn:hover:not(:disabled) {
+            background-color: #d24dff;
+            box-shadow: 0 0 25px var(--neon-purple);
+        }
+        .action-btn:disabled {
+            background-color: #555;
+            color: #888;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
         
         /* Dedektif için özel renk */
-        .detective-ui .action-btn { background-color: #2980b9; }
+        .detective-ui { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 247, 255, 0.2); }
+        .detective-ui .action-btn { background-color: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); }
+        .detective-ui .action-btn:hover:not(:disabled) { background-color: #4dffff; box-shadow: 0 0 25px var(--neon-blue); }
 
         .log-area {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #777;
+            margin-top: auto;
+            font-size: 1.1em;
+            color: #aaa;
             text-align: left;
             width: 100%;
+            padding-top: 15px;
         }
     </style>
 </head>
@@ -103,8 +193,8 @@
         <h1>Gölge Şehir</h1>
         <div id="timer">HAZIR</div>
         <div id="status-text">Oyun Başlatılmayı Bekliyor...</div>
-        <button onclick="startGame()" style="padding: 10px 20px; font-size: 18px; cursor: pointer;">OYUNU BAŞLAT</button>
-        <div id="game-log" style="font-size:14px; color:#555; margin-top:10px;"></div>
+        <button onclick="startGame()" class="main-btn">OYUNU BAŞLAT</button>
+        <div id="game-log" style="font-size:1.2em; color:var(--text-color); margin-top:20px;"></div>
     </div>
 
     <div class="players-container">
@@ -116,7 +206,7 @@
             <span class="role-badge">Sen: KATİL</span>
             <h3>Hedef Seç</h3>
             <p>Bu gece kimi ortadan kaldıracaksın?</p>
-            <select id="p1-target" style="width:100%; padding:10px; margin-bottom:10px;">
+            <select id="p1-target">
                 <option value="Oyuncu 2">Oyuncu 2 (Dedektif)</option>
                 <option value="Oyuncu 3">Oyuncu 3 (Vatandaş)</option>
             </select>
@@ -131,7 +221,7 @@
             <span class="role-badge">Sen: DEDEKTİF</span>
             <h3>Sorgula</h3>
             <p>Kimin kimliğini araştıracaksın?</p>
-            <select id="p2-target" style="width:100%; padding:10px; margin-bottom:10px;">
+            <select id="p2-target">
                 <option value="Oyuncu 1">Oyuncu 1</option>
                 <option value="Oyuncu 3">Oyuncu 3</option>
             </select>
@@ -150,32 +240,23 @@
         </div>
 
     </div>
-
     <script>
-        // OYUN DEĞİŞKENLERİ
         let dayCount = 1;
         let killerChoice = null;
         
-        // SES SENTEZLEYİCİ (HOST KONUŞMASI İÇİN)
         function speak(text) {
             const synth = window.speechSynthesis;
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'tr-TR'; 
-            utterance.rate = 0.9; // Biraz yavaş ve gerilimli
-            utterance.pitch = 0.8; // Biraz kalın ses
+            utterance.rate = 0.9; 
+            utterance.pitch = 0.8; 
             synth.speak(utterance);
-            
-            // Ekrana da yaz
             document.getElementById('status-text').innerText = text;
         }
 
-        // OYUN AKIŞI
         function startGame() {
-            document.querySelector('button').style.display = 'none'; // Başlat butonunu gizle
-            
+            document.querySelector('.main-btn').style.display = 'none';
             speak("Gölge Şehir'e hoş geldiniz. Tartışma başlıyor.");
-            
-            // Sayaç Başlat (Simülasyon için 5 saniye yapalım, normalde 3 dk)
             startTimer(5, () => {
                 startNightPhase();
             });
@@ -184,11 +265,9 @@
         function startTimer(seconds, callback) {
             let timeLeft = seconds;
             const timerEl = document.getElementById('timer');
-            
             const interval = setInterval(() => {
                 timerEl.innerText = `00:0${timeLeft}`;
                 timeLeft--;
-                
                 if (timeLeft < 0) {
                     clearInterval(interval);
                     timerEl.innerText = "SÜRE BİTTİ";
@@ -198,50 +277,35 @@
         }
 
         function startNightPhase() {
-            // HERKESİ UYUT (Host Ekranı)
             speak("Gece çöküyor. Herkes gözlerini kapatsın.");
-            document.getElementById('host-screen').style.backgroundColor = "#001a33"; // Gece rengi
-            
-            // OYUNCU EKRANLARINI KARART
+            document.getElementById('host-screen').style.backgroundColor = "rgba(0, 0, 30, 0.95)";
             document.getElementById('p1-curtain').classList.add('active-blackout');
             document.getElementById('p2-curtain').classList.add('active-blackout');
             document.getElementById('p3-curtain').classList.add('active-blackout');
-
-            // 4 Saniye sonra Katili uyandır
             setTimeout(() => {
                 wakeKiller();
             }, 4000);
         }
 
-        // --- KATİL FAZI ---
         function wakeKiller() {
             speak("Katil uyan... Kurbanını seç.");
-            
-            // Katilin ekranını aç
             const p1Curtain = document.getElementById('p1-curtain');
             p1Curtain.classList.remove('active-blackout');
-            p1Curtain.innerHTML = "<div>AKTİF<br>GÖREV BAŞINDA</div>"; // Diğerlerine kapalı kalmaya devam etmeli ama bu simülasyon
         }
 
         function killerAction() {
             const target = document.getElementById('p1-target').value;
             killerChoice = target;
-            
             document.getElementById('p1-log').innerText = `${target} seçildi.`;
             document.getElementById('p1-btn').disabled = true;
-            
-            // Katili geri uyut
             setTimeout(() => {
                 document.getElementById('p1-curtain').classList.add('active-blackout');
                 wakeDetective();
             }, 2000);
         }
 
-        // --- DEDEKTİF FAZI ---
         function wakeDetective() {
             speak("Katil uyu... Dedektif uyan... Şüpheliyi sorgula.");
-            
-            // Dedektif ekranını aç
             const p2Curtain = document.getElementById('p2-curtain');
             p2Curtain.classList.remove('active-blackout');
         }
@@ -249,41 +313,27 @@
         function detectiveAction() {
             const target = document.getElementById('p2-target').value;
             let result = "TEMİZ";
-            if (target === "Oyuncu 1") result = "KATİL!"; // Oyuncu 1 Katil olduğu için
-            
+            if (target === "Oyuncu 1") result = "KATİL!";
             document.getElementById('p2-log').innerText = `SONUÇ: ${target} bir ${result}`;
             document.getElementById('p2-btn').disabled = true;
-            
-            // Dedektifi geri uyut ve sabaha geç
             setTimeout(() => {
                 document.getElementById('p2-curtain').classList.add('active-blackout');
                 startMorningPhase();
-            }, 4000); // Sonucu okuması için biraz süre ver
+            }, 4000);
         }
 
-        // --- SABAH FAZI ---
         function startMorningPhase() {
             speak("Sabah oldu. Herkes uyanabilir.");
-            document.getElementById('host-screen').style.backgroundColor = "#000"; // Gündüz (Noir siyahı)
-            
-            // Perdeleri kaldır
+            document.getElementById('host-screen').style.backgroundColor = "rgba(0, 0, 20, 0.9)";
             document.getElementById('p1-curtain').classList.remove('active-blackout');
             document.getElementById('p2-curtain').classList.remove('active-blackout');
             document.getElementById('p3-curtain').classList.remove('active-blackout');
-
-            // Sonuçları Açıkla
             setTimeout(() => {
-                let msg = "";
-                if(killerChoice) {
-                    msg = `Dün gece talihsiz bir olay yaşandı. ${killerChoice} ölü bulundu.`;
-                } else {
-                    msg = "Dün gece sakin geçti. Kimse ölmedi.";
-                }
+                let msg = killerChoice ? `Dün gece talihsiz bir olay yaşandı. ${killerChoice} ölü bulundu.` : "Dün gece sakin geçti. Kimse ölmedi.";
                 speak(msg);
                 document.getElementById('status-text').innerText = msg;
             }, 3000);
         }
-
     </script>
 </body>
 </html>
