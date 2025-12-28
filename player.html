@@ -2,106 +2,531 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Shadow City — Player</title>
+
   <style>
-    body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#0b0d14;color:#e9ecff}
-    .wrap{max-width:520px;margin:0 auto;padding:16px}
-    .card{background:#12172a;border:1px solid #2a3358;border-radius:14px;padding:16px}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #33406b;background:#192041;color:#e9ecff;cursor:pointer}
-    .btn.primary{background:#2a57ff;border-color:#2a57ff}
-    .btn.ghost{background:#0e1324}
-    .pill{padding:8px 10px;border:1px solid #2a3358;border-radius:999px;background:#0e1324}
-    .muted{opacity:.75}
-    input,select{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3358;background:#0e1324;color:#e9ecff}
-    label{font-size:12px;opacity:.8}
-    .big{font-size:22px;font-weight:800}
-    .overlay{
-      position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
-      color:#fff;opacity:.92;text-align:center;padding:24px;z-index:20
+    :root{
+      --bg0:#060713;
+      --bg1:#0a0d1a;
+      --panel: rgba(16, 20, 40, .72);
+      --panel2: rgba(10, 12, 26, .78);
+      --stroke: rgba(125, 145, 255, .22);
+      --stroke2: rgba(125, 145, 255, .14);
+      --text: #eef0ff;
+      --muted: rgba(238,240,255,.72);
+
+      --a:#7c3aed;   /* purple */
+      --b:#2a57ff;   /* blue   */
+      --c:#22d3ee;   /* cyan   */
+      --danger:#ff3b7a;
+
+      --r: 18px;
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --shadow2: 0 10px 30px rgba(0,0,0,.35);
     }
-    .overlay.hidden{display:none}
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.22), transparent 60%),
+        radial-gradient(900px 520px at 90% 0%, rgba(34,211,238,.15), transparent 55%),
+        radial-gradient(900px 520px at 30% 110%, rgba(42,87,255,.14), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    /* subtle grain */
+    body:before{
+      content:"";
+      position:fixed; inset:0;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E");
+      opacity:.06;
+      pointer-events:none;
+      mix-blend-mode: overlay;
+    }
+
+    .wrap{
+      min-height:100%;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding: 18px 14px 28px;
+    }
+    .shell{
+      width: min(680px, 100%);
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 6px 14px;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .title{
+      font-weight:900;
+      letter-spacing:.18em;
+      font-size: 16px;
+      text-transform:uppercase;
+      opacity:.95;
+    }
+    .subtitle{
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing:.02em;
+    }
+
+    .iconBtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:46px;height:46px;
+      border-radius:999px;
+      border:1px solid var(--stroke);
+      background: rgba(12, 14, 28, .62);
+      box-shadow: var(--shadow2);
+      color:var(--text);
+      text-decoration:none;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .iconBtn:active{ transform: translateY(1px); }
+
+    .panel{
+      background: var(--panel);
+      border:1px solid var(--stroke);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      overflow:hidden;
+      position:relative;
+    }
+
+    .panelHeader{
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--stroke2);
+      background:
+        radial-gradient(900px 220px at 20% 0%, rgba(124,58,237,.14), transparent 60%),
+        radial-gradient(900px 220px at 80% 0%, rgba(34,211,238,.10), transparent 60%);
+    }
+    .panelHeader h1{
+      margin:0;
+      font-size: 22px;
+      font-weight:900;
+      letter-spacing:.02em;
+    }
+    .panelHeader p{
+      margin:6px 0 0;
+      color:var(--muted);
+      font-size: 14px;
+      line-height:1.35;
+    }
+
+    .panelBody{
+      padding: 16px;
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 520px){
+      .grid2{ grid-template-columns: 1fr 1fr; }
+    }
+
+    label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 6px;
+      letter-spacing:.02em;
+    }
+
+    input, select{
+      width:100%;
+      padding: 14px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(8, 10, 20, .65);
+      color: var(--text);
+      outline:none;
+      font-size: 16px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.18);
+    }
+    input::placeholder{ color: rgba(238,240,255,.45); }
+    input:focus, select:focus{
+      border-color: rgba(34,211,238,.45);
+      box-shadow: 0 0 0 4px rgba(34,211,238,.10);
+    }
+
+    .btnRow{ display:grid; gap:10px; margin-top: 12px; }
+    .btn{
+      width:100%;
+      padding: 14px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(12, 14, 28, .70);
+      color: var(--text);
+      font-weight: 800;
+      letter-spacing:.02em;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: var(--shadow2);
+      min-height: 52px;
+      font-size: 16px;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    .btn.primary{
+      border-color: rgba(42,87,255,.55);
+      background:
+        radial-gradient(1000px 220px at 20% 0%, rgba(34,211,238,.18), transparent 60%),
+        linear-gradient(135deg, rgba(42,87,255,.95), rgba(124,58,237,.92));
+    }
+    .btn.ghost{
+      background: rgba(8, 10, 20, .55);
+    }
+
+    .hint{
+      margin-top:10px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height:1.35;
+    }
+
+    .divider{
+      height:1px;
+      background: var(--stroke2);
+      margin: 14px 0;
+    }
+
+    .pills{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border:1px solid var(--stroke);
+      background: rgba(8,10,20,.55);
+      color: var(--text);
+      font-weight:800;
+      font-size: 13px;
+      letter-spacing:.02em;
+      box-shadow: var(--shadow2);
+    }
+    .pill small{
+      font-weight:700;
+      color: var(--muted);
+      opacity:.95;
+    }
+
+    .card{
+      background: var(--panel2);
+      border:1px solid var(--stroke);
+      border-radius: var(--r);
+      padding: 14px;
+      box-shadow: var(--shadow2);
+    }
+
+    .roleCard{
+      position:relative;
+      overflow:hidden;
+    }
+    .roleCard:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(480px 160px at 10% 10%, rgba(34,211,238,.22), transparent 55%),
+        radial-gradient(520px 180px at 90% 20%, rgba(124,58,237,.22), transparent 60%),
+        radial-gradient(520px 220px at 40% 120%, rgba(42,87,255,.14), transparent 65%);
+      opacity:.85;
+      pointer-events:none;
+    }
+    .roleCardInner{ position:relative; z-index:1; }
+    .roleTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .roleLabel{ color: var(--muted); font-size: 12px; letter-spacing:.06em; text-transform:uppercase; }
+    .roleName{
+      font-size: 28px;
+      font-weight: 950;
+      letter-spacing:.01em;
+      margin-top: 6px;
+    }
+    .roleMsg{
+      margin-top: 10px;
+      color: rgba(238,240,255,.85);
+      font-size: 15px;
+      line-height:1.45;
+      white-space: pre-line;
+    }
+
+    /* glow when awake */
+    .glow{
+      border-color: rgba(34,211,238,.55);
+      box-shadow:
+        0 0 0 2px rgba(34,211,238,.16),
+        0 0 38px rgba(34,211,238,.22),
+        0 18px 60px rgba(0,0,0,.55);
+      animation: pulseGlow 1.7s ease-in-out infinite;
+    }
+    @keyframes pulseGlow{
+      0%,100%{ filter:brightness(1); }
+      50%{ filter:brightness(1.12); }
+    }
+
+    .sectionTitle{
+      font-size: 12px;
+      color: var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.10em;
+      margin: 0 0 10px;
+    }
+
+    .hostText{
+      font-size: 15px;
+      line-height: 1.45;
+      color: rgba(238,240,255,.90);
+      white-space: pre-line;
+    }
+
+    /* Sleep overlay */
+    .overlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 22px;
+      background: rgba(0,0,0,.72);
+      backdrop-filter: blur(8px);
+      z-index: 50;
+      transition: opacity .2s ease;
+    }
+    .overlay.hidden{ display:none; }
+    .sleepBox{
+      width: min(520px, 100%);
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.16);
+      background:
+        radial-gradient(900px 280px at 10% 0%, rgba(124,58,237,.20), transparent 62%),
+        radial-gradient(900px 280px at 90% 0%, rgba(34,211,238,.14), transparent 62%),
+        rgba(10,12,26,.82);
+      box-shadow: var(--shadow);
+      padding: 22px 18px;
+      text-align:center;
+    }
+    .sleepTitle{
+      font-size: 28px;
+      font-weight: 950;
+      letter-spacing:.02em;
+    }
+    .sleepSub{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height:1.45;
+    }
+    .dots{
+      display:inline-flex;
+      gap:6px;
+      margin-top: 14px;
+      opacity:.9;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:99px;
+      background: rgba(238,240,255,.65);
+      animation: blink 1.2s infinite;
+    }
+    .dot:nth-child(2){ animation-delay:.15s; }
+    .dot:nth-child(3){ animation-delay:.30s; }
+    @keyframes blink{
+      0%,100%{ opacity:.25; transform: translateY(0); }
+      50%{ opacity:1; transform: translateY(-2px); }
+    }
+
+    /* Toasts */
+    .toasts{
+      position:fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      z-index: 60;
+      width: min(520px, calc(100% - 24px));
+      pointer-events:none;
+    }
+    .toast{
+      pointer-events:none;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(8,10,20,.78);
+      box-shadow: var(--shadow2);
+      padding: 12px 14px;
+      color: rgba(238,240,255,.92);
+      font-weight: 800;
+      letter-spacing:.01em;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      animation: toastIn .18s ease-out;
+    }
+    @keyframes toastIn{
+      from{ transform: translateY(10px); opacity:0; }
+      to{ transform: translateY(0); opacity:1; }
+    }
+    .toast small{ font-weight:700; color: var(--muted); }
+
+    /* Dead state */
+    .dead{
+      filter: grayscale(1) brightness(.85);
+      opacity: .9;
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
-    <div class="row" style="justify-content:space-between;align-items:center">
-      <div class="big">PLAYER</div>
-      <a class="pill" href="./index.html" style="color:#e9ecff;text-decoration:none">↩</a>
-    </div>
-    <div style="height:10px"></div>
-
-    <div class="card" id="joinCard">
-      <div class="row">
-        <div style="flex:1">
-          <label>Oda Kodu</label>
-          <input id="roomCode" placeholder="ABC123" autocomplete="off"/>
+    <div class="shell">
+      <div class="topbar">
+        <div class="brand">
+          <div class="title">SHADOW CITY</div>
+          <div class="subtitle">Oyuncu ekranı • telefon veya bilgisayar</div>
         </div>
-        <div style="flex:1">
-          <label>İsim</label>
-          <input id="playerName" placeholder="Çisem" autocomplete="off"/>
+        <a class="iconBtn" href="./index.html" aria-label="Geri">
+          ↩
+        </a>
+      </div>
+
+      <!-- JOIN -->
+      <div class="panel" id="joinCard">
+        <div class="panelHeader">
+          <h1>Odaya Katıl</h1>
+          <p>Host’tan oda kodunu al. İsmini yaz ve tek dokunuşla oyuna gir.</p>
         </div>
-      </div>
-      <div style="height:10px"></div>
-      <button class="btn primary" id="btnJoin">Katıl</button>
-      <div class="muted" style="margin-top:8px" id="joinHint">Host’tan oda kodunu al.</div>
-    </div>
+        <div class="panelBody">
+          <div class="grid2">
+            <div>
+              <label>Oda Kodu</label>
+              <input id="roomCode" placeholder="ABC123" autocomplete="off" inputmode="text"/>
+            </div>
+            <div>
+              <label>İsim</label>
+              <input id="playerName" placeholder="Çisem" autocomplete="off" inputmode="text"/>
+            </div>
+          </div>
 
-    <div class="card" id="gameCard" style="display:none;">
-      <div class="row">
-        <div class="pill">Oda: <strong id="roomPill">—</strong></div>
-        <div class="pill">Faz: <strong id="phasePill">—</strong></div>
-      </div>
-
-      <div style="height:10px"></div>
-
-      <div class="card" style="background:#0e1324;border-color:#2a3358">
-        <div class="muted" style="font-size:12px">Rolün</div>
-        <div class="big" id="roleText">—</div>
-        <div class="muted" id="inboxText" style="margin-top:6px">—</div>
-      </div>
-
-      <div style="height:10px"></div>
-
-      <div id="discussionArea">
-        <button class="btn ghost" id="btnCallVote">Oylama iste</button>
-        <div style="height:8px"></div>
-        <button class="btn ghost" id="btnFastNight">Uyuyalım (geceye geç)</button>
-        <div class="muted" style="margin-top:8px;font-size:12px">
-          Bu butonlar çoğunluk olursa etkili olur.
+          <div class="btnRow">
+            <button class="btn primary" id="btnJoin">KATIL</button>
+            <div class="hint" id="joinHint">Kod + isim yeterli. Sonrası otomatik.</div>
+          </div>
         </div>
       </div>
 
-      <div id="voteArea" style="display:none;">
-        <div class="muted" style="font-size:12px">Oylama</div>
-        <select id="voteSelect"></select>
-        <div style="height:8px"></div>
-        <button class="btn primary" id="btnVote">Oy ver</button>
-      </div>
+      <!-- GAME -->
+      <div class="panel" id="gameCard" style="display:none;">
+        <div class="panelHeader">
+          <div class="pills">
+            <div class="pill"><small>ODA</small> <span id="roomPill">—</span></div>
+            <div class="pill"><small>FAZ</small> <span id="phasePill">—</span></div>
+          </div>
+        </div>
 
-      <div id="actionArea" style="display:none;">
-        <div class="muted" style="font-size:12px" id="actionTitle">Aksiyon</div>
-        <select id="targetSelect"></select>
-        <div style="height:8px"></div>
-        <button class="btn primary" id="btnAction">Gönder</button>
-        <div class="muted" style="margin-top:6px;font-size:12px" id="actionHint">—</div>
-      </div>
+        <div class="panelBody" id="gameBody">
+          <!-- Role -->
+          <div class="card roleCard" id="roleCard">
+            <div class="roleCardInner">
+              <div class="roleTop">
+                <div class="roleLabel">ROLÜN</div>
+                <div class="roleLabel" id="awakeHint" style="display:none;color:rgba(34,211,238,.9)">UYANDIN</div>
+              </div>
+              <div class="roleName" id="roleText">—</div>
+              <div class="roleMsg" id="inboxText">Rol dağıtılmasını bekle…</div>
+            </div>
+          </div>
 
-      <div style="height:10px"></div>
-      <div class="card" style="background:#0e1324;border-color:#2a3358">
-        <div class="muted" style="font-size:12px">Host</div>
-        <div id="publicText">—</div>
+          <div class="divider"></div>
+
+          <!-- Discussion (requests) -->
+          <div id="discussionArea">
+            <div class="sectionTitle">Hızlı Aksiyon</div>
+            <button class="btn ghost" id="btnCallVote">OYLAMA İSTE</button>
+            <div style="height:10px"></div>
+            <button class="btn ghost" id="btnFastNight">UYU (GECE İSTE)</button>
+            <div class="hint">Oylama zorunlu değil. Çoğunluk isterse host başlatır. “Uyu” ile hızlıca geceye geçme isteği gönderilir.</div>
+          </div>
+
+          <!-- Vote -->
+          <div id="voteArea" style="display:none;">
+            <div class="sectionTitle">Oylama</div>
+            <div class="card">
+              <label>Oyuncu seç (istersen SKIP)</label>
+              <select id="voteSelect"></select>
+              <div style="height:10px"></div>
+              <button class="btn primary" id="btnVote">OY VER</button>
+              <div class="hint">Oyun bitmeden roller açıklanmaz. (Gerilim burada güzel 😄)</div>
+            </div>
+          </div>
+
+          <!-- Night Action -->
+          <div id="actionArea" style="display:none;">
+            <div class="sectionTitle" id="actionTitle">Aksiyon</div>
+            <div class="card" id="actionCard">
+              <label>Hedef</label>
+              <select id="targetSelect"></select>
+              <div style="height:10px"></div>
+              <button class="btn primary" id="btnAction">GÖNDER</button>
+              <div class="hint" id="actionHint">—</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Host text -->
+          <div class="card">
+            <div class="sectionTitle">Host</div>
+            <div class="hostText" id="publicText">—</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Sleep overlay -->
   <div class="overlay hidden" id="sleepOverlay">
-    <div>
-      <div class="big">UYUYORSUN…</div>
-      <div class="muted" style="margin-top:10px">Rolün uyanınca ekran açılacak.</div>
+    <div class="sleepBox">
+      <div class="sleepTitle">UYUYORSUN</div>
+      <div class="sleepSub">Rolün uyanınca ekranın açılacak. Şehir sessiz… ama çok da güvenli değil.</div>
+      <div class="dots" aria-hidden="true">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
     </div>
   </div>
+
+  <!-- Toast container -->
+  <div class="toasts" id="toasts"></div>
 
   <script type="module">
     import {
@@ -116,12 +541,27 @@
     import { ROLES, ROLE_TR, ACTIONS, PHASE } from "./shared.js";
 
     const el = (id)=>document.getElementById(id);
+
     let roomCode=null, myUid=null;
     let players={}, state={}, settings={}, myRole=null;
 
+    function toast(msg, sub=""){
+      const box = el("toasts");
+      const node = document.createElement("div");
+      node.className = "toast";
+      node.innerHTML = `<span>${escapeHtml(msg)}</span>${sub?`<small>${escapeHtml(sub)}</small>`:""}`;
+      box.appendChild(node);
+      setTimeout(()=>{ node.style.opacity="0"; node.style.transform="translateY(6px)"; }, 1800);
+      setTimeout(()=>{ node.remove(); }, 2200);
+    }
+
     function escapeHtml(s){
-      return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;")
-        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+      return String(s||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
     }
 
     function myPlayer(){ return players?.[myUid] || null; }
@@ -155,12 +595,10 @@
 
     function renderActionTargets(kind){
       const me = myPlayer();
-      const role = myRole?.role;
       let includeSelf = false;
       let allowNoKill = false;
 
       if (kind==="protect"){
-        // self protect sınırı: UI tarafında “kullanıldıysa çıkar”
         const used = Number(me?.doctorSelfProtectUsed||0);
         includeSelf = used < Number(settings?.doctorSelfSaveMax ?? 1);
       }
@@ -176,6 +614,17 @@
       el("sleepOverlay").classList.toggle("hidden", !on);
     }
 
+    function setAwakeVisual(isAwake){
+      const roleCard = el("roleCard");
+      const hint = el("awakeHint");
+      roleCard.classList.toggle("glow", !!isAwake);
+      hint.style.display = isAwake ? "inline" : "none";
+    }
+
+    function setDeadVisual(isDead){
+      el("gameBody").classList.toggle("dead", !!isDead);
+    }
+
     function updateUI(){
       el("roomPill").textContent = roomCode || "—";
       el("phasePill").textContent = state?.phase || "—";
@@ -183,16 +632,20 @@
 
       const role = myRole?.role || null;
       el("roleText").textContent = role ? (ROLE_TR[role] || role) : "—";
-      el("inboxText").textContent = myRole?.inbox?.msg || "—";
+      el("inboxText").textContent = myRole?.inbox?.msg || "Rol dağıtılmasını bekle…";
 
       const me = myPlayer();
       if (!me){ return; }
+
+      setDeadVisual(!me.alive);
+
+      // dead -> watch only
       if (!me.alive){
-        // öldüyse sadece izler
         el("discussionArea").style.display="none";
         el("voteArea").style.display="none";
         el("actionArea").style.display="none";
         setOverlaySleeping(false);
+        setAwakeVisual(false);
         return;
       }
 
@@ -200,6 +653,7 @@
       el("discussionArea").style.display="none";
       el("voteArea").style.display="none";
       el("actionArea").style.display="none";
+      setAwakeVisual(false);
 
       // phases
       if (state?.phase === PHASE.WAITING){
@@ -210,7 +664,7 @@
 
       if (state?.phase === PHASE.DISCUSSION){
         el("discussionArea").style.display="block";
-        renderVote(); // seçim listesi hazır dursun
+        renderVote();
         setOverlaySleeping(false);
         return;
       }
@@ -227,38 +681,38 @@
         const awake = state?.awakeRole;
         if (awake && role === awake){
           setOverlaySleeping(false);
+          setAwakeVisual(true);
           el("actionArea").style.display="block";
 
           if (state.phase === PHASE.NIGHT_KILL){
-            el("actionTitle").textContent="Kurban seç";
-            el("actionHint").textContent="Seçimini gönder.";
+            el("actionTitle").textContent="Gece • Kurban Seç";
+            el("actionHint").textContent="Seçimini gönder. Kimse seni görmüyor.";
             renderActionTargets("kill");
           } else if (state.phase === PHASE.NIGHT_DOCTOR){
-            el("actionTitle").textContent="Birini koru";
-            el("actionHint").textContent="Kendini sadece sınırlı kez koruyabilirsin.";
+            el("actionTitle").textContent="Gece • Koruma";
+            el("actionHint").textContent="Kendini sınırlı kez koruyabilirsin.";
             renderActionTargets("protect");
           } else if (state.phase === PHASE.NIGHT_DETECTIVE){
-            el("actionTitle").textContent="Sorgula";
+            el("actionTitle").textContent="Gece • Sorgu";
             el("actionHint").textContent="Sonuç gizli mesaj olarak gelir.";
             renderActionTargets("investigate");
           }
         } else {
-          // uyuyor
           setOverlaySleeping(true);
+          setAwakeVisual(false);
         }
         return;
       }
 
       if (state?.phase === PHASE.MORNING){
         setOverlaySleeping(false);
-        el("discussionArea").style.display="none";
-        el("voteArea").style.display="none";
-        el("actionArea").style.display="none";
+        setAwakeVisual(false);
         return;
       }
 
       if (state?.phase === PHASE.ENDED){
         setOverlaySleeping(false);
+        setAwakeVisual(false);
         el("discussionArea").style.display="none";
         el("voteArea").style.display="none";
         el("actionArea").style.display="none";
@@ -272,27 +726,37 @@
 
       if (!roomCode || roomCode.length < 4){
         el("joinHint").textContent = "Geçerli oda kodu gir.";
+        toast("Geçersiz oda kodu", "En az 4 karakter");
         return;
       }
       if (!name){
         el("joinHint").textContent = "İsim gir.";
+        toast("İsim gerekli", "Bir isim yaz");
         return;
       }
 
-      const me = await ensureAuth();
-      myUid = me.uid;
+      try{
+        const me = await ensureAuth();
+        myUid = me.uid;
 
-      await joinRoomAsPlayer(roomCode, name);
+        await joinRoomAsPlayer(roomCode, name);
 
-      el("joinCard").style.display="none";
-      el("gameCard").style.display="block";
+        el("joinCard").style.display="none";
+        el("gameCard").style.display="block";
 
-      listen(playersRef(roomCode), (v)=>{ players=v||{}; updateUI(); });
-      listen(stateRef(roomCode), (v)=>{ state=v||{}; updateUI(); });
-      listen(settingsRef(roomCode), (v)=>{ settings=v||{}; updateUI(); });
-      listen(secretRoleRef(roomCode, myUid), (v)=>{ myRole=v||null; updateUI(); });
+        toast("Odaya katıldın", roomCode);
 
-      updateUI();
+        listen(playersRef(roomCode), (v)=>{ players=v||{}; updateUI(); });
+        listen(stateRef(roomCode), (v)=>{ state=v||{}; updateUI(); });
+        listen(settingsRef(roomCode), (v)=>{ settings=v||{}; updateUI(); });
+        listen(secretRoleRef(roomCode, myUid), (v)=>{ myRole=v||null; updateUI(); });
+
+        updateUI();
+      } catch (e){
+        console.error(e);
+        el("joinHint").textContent = "Katılırken hata oluştu. Tekrar dene.";
+        toast("Bağlantı hatası", "Tekrar dene");
+      }
     }
 
     async function callVote(){
@@ -300,7 +764,8 @@
       if (!me || !me.alive) return;
       await set(requestVoteMeRef(roomCode, myUid), true);
       el("btnCallVote").disabled = true;
-      setTimeout(()=> el("btnCallVote").disabled=false, 5000);
+      toast("Oylama isteği gönderildi", "Çoğunluk olursa açılır");
+      setTimeout(()=> el("btnCallVote").disabled=false, 4000);
     }
 
     async function fastNight(){
@@ -308,7 +773,8 @@
       if (!me || !me.alive) return;
       await set(requestFastNightMeRef(roomCode, myUid), true);
       el("btnFastNight").disabled = true;
-      setTimeout(()=> el("btnFastNight").disabled=false, 5000);
+      toast("Gece isteği gönderildi", "Çoğunluk olursa hızlanır");
+      setTimeout(()=> el("btnFastNight").disabled=false, 4000);
     }
 
     async function vote(){
@@ -317,6 +783,7 @@
       const choice = el("voteSelect").value;
       await set(votingVoteMeRef(roomCode, myUid), choice);
       el("btnVote").disabled = true;
+      toast("Oyun verildi", choice === ACTIONS.SKIP_VOTE ? "SKIP" : "Seçim kaydedildi");
       setTimeout(()=> el("btnVote").disabled=false, 3000);
     }
 
@@ -324,7 +791,6 @@
       const me = myPlayer();
       if (!me || !me.alive) return;
 
-      const role = myRole?.role;
       const target = el("targetSelect").value;
 
       let kind=null;
@@ -335,14 +801,20 @@
 
       await set(nightActionMeRef(roomCode, kind, myUid), target);
       el("btnAction").disabled = true;
+      toast("Görev gönderildi", "Bekle…");
       setTimeout(()=> el("btnAction").disabled=false, 3000);
     }
 
+    // Events
     el("btnJoin").addEventListener("click", join);
     el("btnCallVote").addEventListener("click", callVote);
     el("btnFastNight").addEventListener("click", fastNight);
     el("btnVote").addEventListener("click", vote);
     el("btnAction").addEventListener("click", action);
+
+    // Enter to join
+    el("roomCode").addEventListener("keydown", (e)=>{ if(e.key==="Enter") join(); });
+    el("playerName").addEventListener("keydown", (e)=>{ if(e.key==="Enter") join(); });
 
     ensureAuth();
   </script>
