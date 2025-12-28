@@ -66,10 +66,11 @@ export const playerRef = (roomCode, uid) => ref(db, `rooms/${roomCode}/players/$
 export const settingsRef = (roomCode) => ref(db, `rooms/${roomCode}/settings`);
 export const stateRef = (roomCode) => ref(db, `rooms/${roomCode}/state`);
 export const myRoleRef = (roomCode, uid) => ref(db, `rooms/${roomCode}/secret/roles/${uid}`);
-export const voteCallRequestsRef = (roomCode) => ref(db, `rooms/${roomCode}/day/voteCall/requests`);
 export const votingVotesRef = (roomCode) => ref(db, `rooms/${roomCode}/voting/votes`);
 export const nightActionsRef = (roomCode) => ref(db, `rooms/${roomCode}/night/actions`);
 export const nightResultsRef = (roomCode) => ref(db, `rooms/${roomCode}/night/results`);
+export const voteStartRequestsRef = (roomCode) => ref(db, `rooms/${roomCode}/requests/voteStart`);
+export const fastNightRequestsRef = (roomCode) => ref(db, `rooms/${roomCode}/requests/fastNight`);
 export const logRef = (roomCode) => ref(db, `rooms/${roomCode}/log/events`);
 
 /**
