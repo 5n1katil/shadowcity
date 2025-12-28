@@ -1,184 +1,179 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Shadow City — Player</title>
-  <link rel="stylesheet" href="./styles.css"/>
+  <style>
+    body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#0b0d14;color:#e9ecff}
+    .wrap{max-width:520px;margin:0 auto;padding:16px}
+    .card{background:#12172a;border:1px solid #2a3358;border-radius:14px;padding:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #33406b;background:#192041;color:#e9ecff;cursor:pointer}
+    .btn.primary{background:#2a57ff;border-color:#2a57ff}
+    .btn.ghost{background:#0e1324}
+    .pill{padding:8px 10px;border:1px solid #2a3358;border-radius:999px;background:#0e1324}
+    .muted{opacity:.75}
+    input,select{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3358;background:#0e1324;color:#e9ecff}
+    label{font-size:12px;opacity:.8}
+    .big{font-size:22px;font-weight:800}
+    .overlay{
+      position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;
+      color:#fff;opacity:.92;text-align:center;padding:24px;z-index:20
+    }
+    .overlay.hidden{display:none}
+  </style>
 </head>
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand__title">SHADOW CITY — PLAYER</div>
-        <div class="brand__subtitle">Telefondan bağlan</div>
-      </div>
-      <a class="pill" href="./index.html">↩</a>
-    </header>
+  <div class="wrap">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="big">PLAYER</div>
+      <a class="pill" href="./index.html" style="color:#e9ecff;text-decoration:none">↩</a>
+    </div>
+    <div style="height:10px"></div>
 
-    <main class="card stack" id="joinCard">
-      <h2 class="h2">Odaya Katıl</h2>
+    <div class="card" id="joinCard">
       <div class="row">
-        <div>
+        <div style="flex:1">
           <label>Oda Kodu</label>
-          <input id="roomCode" placeholder="ABC123" autocomplete="off" />
+          <input id="roomCode" placeholder="ABC123" autocomplete="off"/>
         </div>
-        <div>
-          <label>İsmin</label>
-          <input id="playerName" placeholder="Çisem" autocomplete="off" />
+        <div style="flex:1">
+          <label>İsim</label>
+          <input id="playerName" placeholder="Çisem" autocomplete="off"/>
         </div>
       </div>
-      <button class="btn btn-primary" id="btnJoin">KATIL</button>
-      <div class="tiny muted" id="joinHint">Host’tan oda kodunu al.</div>
-    </main>
+      <div style="height:10px"></div>
+      <button class="btn primary" id="btnJoin">Katıl</button>
+      <div class="muted" style="margin-top:8px" id="joinHint">Host’tan oda kodunu al.</div>
+    </div>
 
-    <main class="card stack" id="gameCard" style="display:none;">
+    <div class="card" id="gameCard" style="display:none;">
       <div class="row">
         <div class="pill">Oda: <strong id="roomPill">—</strong></div>
-        <div class="pill">Durum: <strong id="phasePill">—</strong></div>
+        <div class="pill">Faz: <strong id="phasePill">—</strong></div>
       </div>
 
-      <div class="notice">
-        <div class="muted tiny">Rolün</div>
+      <div style="height:10px"></div>
+
+      <div class="card" style="background:#0e1324;border-color:#2a3358">
+        <div class="muted" style="font-size:12px">Rolün</div>
         <div class="big" id="roleText">—</div>
-        <div class="muted" id="roleHelp">Rol dağıtılmasını bekle.</div>
-        <div class="hr"></div>
-        <div class="tiny muted">Gizli Mesaj</div>
-        <div id="inboxText">—</div>
+        <div class="muted" id="inboxText" style="margin-top:6px">—</div>
       </div>
 
-      <div class="stack" id="actionArea" style="display:none;">
-        <h2 class="h2" id="actionTitle">Aksiyon</h2>
-        <div>
-          <label>Hedef</label>
-          <select id="targetSelect"></select>
-          <div class="tiny muted" id="selfProtectHint" style="display:none;">
-            Doktor kendini sadece sınırlı sayıda koruyabilir.
-          </div>
-        </div>
-        <button class="btn btn-primary" id="btnSubmitAction">GÖNDER</button>
-        <div class="tiny muted" id="actionHint">Host’un yönergelerini takip et.</div>
-      </div>
+      <div style="height:10px"></div>
 
-      <div class="stack" id="voteArea" style="display:none;">
-        <h2 class="h2">Oylama</h2>
-
-        <div id="voteOnlyCallBox" class="notice" style="display:none;">
-          <div class="muted">Tartışma devam ediyor. İstersen oylama başlat veya herkesin uyumasını iste.</div>
-          <div class="hr"></div>
-          <div class="row">
-            <button class="btn btn-ghost" id="btnCallVoteStart">OYLAMA BAŞLAT</button>
-            <button class="btn btn-ghost" id="btnCallFastNight">UYUYALIM</button>
-          </div>
-          <div class="tiny muted">Çoğunluk isterse otomatik gerçekleşir.</div>
-        </div>
-
-        <div id="voteCastBox" style="display:none;">
-          <div>
-            <label>Oyuncu seç (istersen SKIP)</label>
-            <select id="voteSelect"></select>
-          </div>
-          <button class="btn btn-primary" id="btnSubmitVote">OY VER</button>
+      <div id="discussionArea">
+        <button class="btn ghost" id="btnCallVote">Oylama iste</button>
+        <div style="height:8px"></div>
+        <button class="btn ghost" id="btnFastNight">Uyuyalım (geceye geç)</button>
+        <div class="muted" style="margin-top:8px;font-size:12px">
+          Bu butonlar çoğunluk olursa etkili olur.
         </div>
       </div>
 
-      <div class="notice" id="publicTextBox">
-        <strong>Host:</strong>
-        <div class="muted" id="publicText">—</div>
+      <div id="voteArea" style="display:none;">
+        <div class="muted" style="font-size:12px">Oylama</div>
+        <select id="voteSelect"></select>
+        <div style="height:8px"></div>
+        <button class="btn primary" id="btnVote">Oy ver</button>
       </div>
-    </main>
+
+      <div id="actionArea" style="display:none;">
+        <div class="muted" style="font-size:12px" id="actionTitle">Aksiyon</div>
+        <select id="targetSelect"></select>
+        <div style="height:8px"></div>
+        <button class="btn primary" id="btnAction">Gönder</button>
+        <div class="muted" style="margin-top:6px;font-size:12px" id="actionHint">—</div>
+      </div>
+
+      <div style="height:10px"></div>
+      <div class="card" style="background:#0e1324;border-color:#2a3358">
+        <div class="muted" style="font-size:12px">Host</div>
+        <div id="publicText">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="sleepOverlay">
+    <div>
+      <div class="big">UYUYORSUN…</div>
+      <div class="muted" style="margin-top:10px">Rolün uyanınca ekran açılacak.</div>
+    </div>
   </div>
 
   <script type="module">
     import {
-      ensureAuth,
-      joinRoomAsPlayer,
-      playersRef,
-      playerRef,
-      stateRef,
-      settingsRef,
-      myRoleRef,
-      listen,
-      set,
-      update,
-      get,
-      ref,
-      db
+      ensureAuth, joinRoomAsPlayer,
+      playersRef, playerRef, stateRef, settingsRef, secretRoleRef,
+      requestVoteMeRef, requestFastNightMeRef,
+      votingVoteMeRef,
+      nightActionMeRef,
+      get, set, update, listen, ref, db
     } from "./firebase.js";
 
-    import { ROLES, ACTIONS } from "./shared.js";
+    import { ROLES, ROLE_TR, ACTIONS, PHASE } from "./shared.js";
 
-    let roomCode = null;
-    let myUid = null;
-
-    let players = {};
-    let state = {};
-    let settings = {};
-    let myRoleObj = null;
-
-    const el = (id) => document.getElementById(id);
-
-    const ROLE_LABEL_TR = {
-      CITIZEN: "Vatandaş",
-      KILLER: "Katil",
-      DETECTIVE: "Dedektif",
-      DOCTOR: "Doktor",
-    };
+    const el = (id)=>document.getElementById(id);
+    let roomCode=null, myUid=null;
+    let players={}, state={}, settings={}, myRole=null;
 
     function escapeHtml(s){
-      return String(s || "")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#39;");
+      return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
     }
 
-    function myPlayer(){
-      return players?.[myUid] || null;
-    }
+    function myPlayer(){ return players?.[myUid] || null; }
 
-    function alivePlayersList(){
-      return Object.entries(players || {})
-        .filter(([uid, p]) => p && !p.isHost && p.alive)
-        .map(([uid, p]) => ({ uid, name: p.name || "Oyuncu" }));
-    }
+    function buildTargets({includeSelf=false, allowNoKill=false}){
+      const list = Object.entries(players||{})
+        .filter(([uid,p]) => p && !p.isHost && p.alive);
 
-    function renderTargets(selectEl, { includeSelf=false, includeNoKill=false } = {}){
       const me = myUid;
-      const alive = alivePlayersList();
-
       const opts = [];
 
-      if (includeNoKill) {
-        opts.push({ uid: ACTIONS.NO_KILL, name: "KİMSEYİ ÖLDÜRME" });
+      if (allowNoKill){
+        opts.push({ uid: ACTIONS.NO_KILL, name: "Kimseyi öldürme (NO KILL)" });
       }
 
-      for (const p of alive) {
-        if (!includeSelf && p.uid === me) continue;
-        if (p.uid === me && includeSelf) {
-          opts.push({ uid: p.uid, name: `${p.name} (Sen)` });
-        } else {
-          opts.push({ uid: p.uid, name: p.name });
-        }
+      for (const [uid,p] of list){
+        if (!includeSelf && uid === me) continue;
+        opts.push({ uid, name: p.name || "Oyuncu" });
+      }
+      return opts;
+    }
+
+    function renderVote(){
+      const alive = Object.entries(players||{})
+        .filter(([,p])=>p && !p.isHost && p.alive);
+
+      const opts = [`<option value="${ACTIONS.SKIP_VOTE}">SKIP (kimse)</option>`]
+        .concat(alive.map(([uid,p])=>`<option value="${uid}">${escapeHtml(p.name||"Oyuncu")}</option>`));
+      el("voteSelect").innerHTML = opts.join("");
+    }
+
+    function renderActionTargets(kind){
+      const me = myPlayer();
+      const role = myRole?.role;
+      let includeSelf = false;
+      let allowNoKill = false;
+
+      if (kind==="protect"){
+        // self protect sınırı: UI tarafında “kullanıldıysa çıkar”
+        const used = Number(me?.doctorSelfProtectUsed||0);
+        includeSelf = used < Number(settings?.doctorSelfSaveMax ?? 1);
+      }
+      if (kind==="kill"){
+        allowNoKill = !!settings?.allowNoKill;
       }
 
-      selectEl.innerHTML = opts
-        .map(o => `<option value="${o.uid}">${escapeHtml(o.name)}</option>`)
-        .join("");
+      const opts = buildTargets({includeSelf, allowNoKill});
+      el("targetSelect").innerHTML = opts.map(o=>`<option value="${o.uid}">${escapeHtml(o.name)}</option>`).join("");
     }
 
-    function renderVoteSelect(){
-      const alive = alivePlayersList();
-      const options = [
-        `<option value="${ACTIONS.SKIP_VOTE}">SKIP (Kimse)</option>`,
-        ...alive.map(p => `<option value="${p.uid}">${escapeHtml(p.name)}</option>`)
-      ];
-      el("voteSelect").innerHTML = options.join("");
-    }
-
-    function show(elm, yes){
-      elm.style.display = yes ? "block" : "none";
+    function setOverlaySleeping(on){
+      el("sleepOverlay").classList.toggle("hidden", !on);
     }
 
     function updateUI(){
@@ -186,133 +181,88 @@
       el("phasePill").textContent = state?.phase || "—";
       el("publicText").textContent = state?.hostText || "—";
 
-      const role = myRoleObj?.role || null;
-      el("roleText").textContent = role ? (ROLE_LABEL_TR[role] || role) : "—";
-      el("inboxText").textContent = myRoleObj?.inbox?.msg || "—";
+      const role = myRole?.role || null;
+      el("roleText").textContent = role ? (ROLE_TR[role] || role) : "—";
+      el("inboxText").textContent = myRole?.inbox?.msg || "—";
 
       const me = myPlayer();
-      if (!me) return;
-
-      // default hide
-      show(el("actionArea"), false);
-      show(el("voteArea"), false);
-      show(el("voteOnlyCallBox"), false);
-      show(el("voteCastBox"), false);
-
-      // dead => no actions
-      if (!me.alive) {
-        el("roleHelp").textContent = "Elendin. Oyunu izleyebilirsin.";
+      if (!me){ return; }
+      if (!me.alive){
+        // öldüyse sadece izler
+        el("discussionArea").style.display="none";
+        el("voteArea").style.display="none";
+        el("actionArea").style.display="none";
+        setOverlaySleeping(false);
         return;
       }
 
-      const phase = state?.phase;
+      // default
+      el("discussionArea").style.display="none";
+      el("voteArea").style.display="none";
+      el("actionArea").style.display="none";
 
-      // WAITING / DISCUSSION: vote is optional -> show call vote only
-      if (phase === "waiting" || phase === "discussion") {
-        show(el("voteArea"), true);
-        show(el("voteOnlyCallBox"), true);
-        el("btnCallVoteStart").disabled = false;
-        el("btnCallFastNight").disabled = false;
-        el("roleHelp").textContent = "Tartışma zamanı. Oylama zorunlu değil.";
+      // phases
+      if (state?.phase === PHASE.WAITING){
+        el("discussionArea").style.display="block";
+        setOverlaySleeping(false);
         return;
       }
 
-      // VOTING: show casting UI
-      if (phase === "voting") {
-        show(el("voteArea"), true);
-        show(el("voteCastBox"), true);
-        renderVoteSelect();
-        el("btnSubmitVote").disabled = false;
-        el("roleHelp").textContent = "Oylama zamanı. Oyunu gönder.";
+      if (state?.phase === PHASE.DISCUSSION){
+        el("discussionArea").style.display="block";
+        renderVote(); // seçim listesi hazır dursun
+        setOverlaySleeping(false);
         return;
       }
 
-      // ENDED
-      if (phase === "ended") {
-        el("roleHelp").textContent = "Oyun bitti.";
+      if (state?.phase === PHASE.VOTING){
+        el("voteArea").style.display="block";
+        renderVote();
+        setOverlaySleeping(false);
         return;
       }
 
-      // NIGHT
-      if (phase === "night") {
-        const stage = state?.nightStage || "kill"; // host set etmeyi unutursa fallback
-        const actionArea = el("actionArea");
-        show(actionArea, true);
+      // Night: sadece awakeRole == benim rolüm ise aç
+      if (String(state?.phase||"").startsWith("night")){
+        const awake = state?.awakeRole;
+        if (awake && role === awake){
+          setOverlaySleeping(false);
+          el("actionArea").style.display="block";
 
-        const btn = el("btnSubmitAction");
-        btn.disabled = false;
-
-        el("selfProtectHint").style.display = "none";
-
-        if (!role) {
-          el("roleHelp").textContent = "Rol dağıtılmadı. Bekle.";
-          btn.disabled = true;
-          el("actionHint").textContent = "Bekle…";
-          return;
-        }
-
-        // KILL stage
-        if (stage === "kill") {
-          el("actionTitle").textContent = "Kurban Seç";
-          if (role !== ROLES.KILLER) {
-            btn.disabled = true;
-            el("roleHelp").textContent = "Uyuyorsun…";
-            el("actionHint").textContent = "Uyuyorsun…";
-          } else {
-            const allowNoKill = settings?.allowNoKill === true;
-            renderTargets(el("targetSelect"), { includeSelf:false, includeNoKill: allowNoKill });
-            el("roleHelp").textContent = "Host katilleri uyandırınca seçim yap.";
-            el("actionHint").textContent = allowNoKill
-              ? "İstersen kimseyi öldürmeyebilirsin."
-              : "Kimse görmüyor. Seç ve gönder.";
+          if (state.phase === PHASE.NIGHT_KILL){
+            el("actionTitle").textContent="Kurban seç";
+            el("actionHint").textContent="Seçimini gönder.";
+            renderActionTargets("kill");
+          } else if (state.phase === PHASE.NIGHT_DOCTOR){
+            el("actionTitle").textContent="Birini koru";
+            el("actionHint").textContent="Kendini sadece sınırlı kez koruyabilirsin.";
+            renderActionTargets("protect");
+          } else if (state.phase === PHASE.NIGHT_DETECTIVE){
+            el("actionTitle").textContent="Sorgula";
+            el("actionHint").textContent="Sonuç gizli mesaj olarak gelir.";
+            renderActionTargets("investigate");
           }
-          return;
+        } else {
+          // uyuyor
+          setOverlaySleeping(true);
         }
+        return;
+      }
 
-        // PROTECT stage
-        if (stage === "protect") {
-          el("actionTitle").textContent = "Koruma Seç";
-          if (role !== ROLES.DOCTOR) {
-            btn.disabled = true;
-            el("roleHelp").textContent = "Uyuyorsun…";
-            el("actionHint").textContent = "Uyuyorsun…";
-          } else {
-            const used = Number(me.doctorSelfProtectUsed || 0);
-            const max = Number(settings?.doctorSelfSaveMax ?? 1);
-            const canSelf = used < max;
+      if (state?.phase === PHASE.MORNING){
+        setOverlaySleeping(false);
+        el("discussionArea").style.display="none";
+        el("voteArea").style.display="none";
+        el("actionArea").style.display="none";
+        return;
+      }
 
-            el("selfProtectHint").style.display = "block";
-            el("selfProtectHint").textContent = `Doktor kendini ${max} kez koruyabilir. (Kullandın: ${used}/${max})`;
-
-            renderTargets(el("targetSelect"), { includeSelf: canSelf, includeNoKill:false });
-
-            el("roleHelp").textContent = "Doktorsan birini koru.";
-            el("actionHint").textContent = canSelf
-              ? "İstersen kendini de koruyabilirsin."
-              : "Kendini koruma hakkını kullandın.";
-          }
-          return;
-        }
-
-        // INVESTIGATE stage
-        if (stage === "investigate") {
-          el("actionTitle").textContent = "Sorgula";
-          if (role !== ROLES.DETECTIVE) {
-            btn.disabled = true;
-            el("roleHelp").textContent = "Uyuyorsun…";
-            el("actionHint").textContent = "Uyuyorsun…";
-          } else {
-            renderTargets(el("targetSelect"), { includeSelf:false, includeNoKill:false });
-            el("roleHelp").textContent = "Dedektifsen birini sorgula.";
-            el("actionHint").textContent = "Seç ve gönder. Sonuç gizli mesaj olarak gelir.";
-          }
-          return;
-        }
-
-        // unknown stage
-        btn.disabled = true;
-        el("roleHelp").textContent = "Bekle…";
-        el("actionHint").textContent = "Host aşamayı ayarlıyor…";
+      if (state?.phase === PHASE.ENDED){
+        setOverlaySleeping(false);
+        el("discussionArea").style.display="none";
+        el("voteArea").style.display="none";
+        el("actionArea").style.display="none";
+        return;
       }
     }
 
@@ -320,108 +270,79 @@
       roomCode = el("roomCode").value.trim().toUpperCase();
       const name = el("playerName").value.trim();
 
-      if (!roomCode || roomCode.length < 4) {
-        el("joinHint").textContent = "Geçerli bir oda kodu gir.";
+      if (!roomCode || roomCode.length < 4){
+        el("joinHint").textContent = "Geçerli oda kodu gir.";
         return;
       }
-      if (!name) {
+      if (!name){
         el("joinHint").textContent = "İsim gir.";
         return;
       }
 
-      const auth = await ensureAuth();
-      myUid = auth.uid;
+      const me = await ensureAuth();
+      myUid = me.uid;
 
       await joinRoomAsPlayer(roomCode, name);
 
-      el("joinCard").style.display = "none";
-      el("gameCard").style.display = "block";
+      el("joinCard").style.display="none";
+      el("gameCard").style.display="block";
 
-      listen(playersRef(roomCode), (val) => { players = val || {}; updateUI(); });
-      listen(stateRef(roomCode), (st) => { state = st || {}; updateUI(); });
-      listen(settingsRef(roomCode), (s) => { settings = s || {}; updateUI(); });
-      listen(myRoleRef(roomCode, myUid), (r) => { myRoleObj = r || null; updateUI(); });
+      listen(playersRef(roomCode), (v)=>{ players=v||{}; updateUI(); });
+      listen(stateRef(roomCode), (v)=>{ state=v||{}; updateUI(); });
+      listen(settingsRef(roomCode), (v)=>{ settings=v||{}; updateUI(); });
+      listen(secretRoleRef(roomCode, myUid), (v)=>{ myRole=v||null; updateUI(); });
 
       updateUI();
     }
 
-    async function submitNightAction(){
+    async function callVote(){
       const me = myPlayer();
       if (!me || !me.alive) return;
-
-      const role = myRoleObj?.role;
-      const phase = state?.phase;
-      const stage = state?.nightStage || "kill";
-      const targetUid = el("targetSelect").value;
-
-      if (phase !== "night") return;
-      if (!role || !targetUid) return;
-
-      // Sadece ilgili rol o aşamada yazsın (UI zaten kilitli ama güvenlik)
-      if (stage === "kill" && role !== ROLES.KILLER) return;
-      if (stage === "protect" && role !== ROLES.DOCTOR) return;
-      if (stage === "investigate" && role !== ROLES.DETECTIVE) return;
-
-      // doctor self-save limit client side guard (asıl doğrulama host tarafında)
-      if (stage === "protect" && role === ROLES.DOCTOR && targetUid === myUid) {
-        const used = Number(me.doctorSelfProtectUsed || 0);
-        const max = Number(settings?.doctorSelfSaveMax ?? 1);
-        if (used >= max) {
-          el("actionHint").textContent = "Kendini koruma hakkın kalmadı.";
-          return;
-        }
-      }
-
-      const r = ref(db, `rooms/${roomCode}/night/actions/${stage}/${myUid}`);
-      await set(r, targetUid);
-
-      el("actionHint").textContent = "Gönderildi. Bekle…";
-      el("btnSubmitAction").disabled = true;
+      await set(requestVoteMeRef(roomCode, myUid), true);
+      el("btnCallVote").disabled = true;
+      setTimeout(()=> el("btnCallVote").disabled=false, 5000);
     }
 
-    async function submitVote(){
+    async function fastNight(){
       const me = myPlayer();
       if (!me || !me.alive) return;
+      await set(requestFastNightMeRef(roomCode, myUid), true);
+      el("btnFastNight").disabled = true;
+      setTimeout(()=> el("btnFastNight").disabled=false, 5000);
+    }
 
-      if (state?.phase !== "voting") return;
-
+    async function vote(){
+      const me = myPlayer();
+      if (!me || !me.alive) return;
       const choice = el("voteSelect").value;
-      const r = ref(db, `rooms/${roomCode}/voting/votes/${myUid}`);
-      await set(r, choice);
-
-      el("btnSubmitVote").disabled = true;
+      await set(votingVoteMeRef(roomCode, myUid), choice);
+      el("btnVote").disabled = true;
+      setTimeout(()=> el("btnVote").disabled=false, 3000);
     }
 
-    async function callVoteStart(){
+    async function action(){
       const me = myPlayer();
       if (!me || !me.alive) return;
 
-      // waiting/discussion sırasında istek gönder
-      if (state?.phase !== "waiting" && state?.phase !== "discussion") return;
+      const role = myRole?.role;
+      const target = el("targetSelect").value;
 
-      const r = ref(db, `rooms/${roomCode}/requests/voteStart/${myUid}`);
-      await set(r, true);
+      let kind=null;
+      if (state.phase === PHASE.NIGHT_KILL) kind="kill";
+      if (state.phase === PHASE.NIGHT_DOCTOR) kind="protect";
+      if (state.phase === PHASE.NIGHT_DETECTIVE) kind="investigate";
+      if (!kind) return;
 
-      el("btnCallVoteStart").disabled = true;
-    }
-
-    async function callFastNight(){
-      const me = myPlayer();
-      if (!me || !me.alive) return;
-
-      if (state?.phase !== "waiting" && state?.phase !== "discussion") return;
-
-      const r = ref(db, `rooms/${roomCode}/requests/fastNight/${myUid}`);
-      await set(r, true);
-
-      el("btnCallFastNight").disabled = true;
+      await set(nightActionMeRef(roomCode, kind, myUid), target);
+      el("btnAction").disabled = true;
+      setTimeout(()=> el("btnAction").disabled=false, 3000);
     }
 
     el("btnJoin").addEventListener("click", join);
-    el("btnSubmitAction").addEventListener("click", submitNightAction);
-    el("btnSubmitVote").addEventListener("click", submitVote);
-    el("btnCallVoteStart").addEventListener("click", callVoteStart);
-    el("btnCallFastNight").addEventListener("click", callFastNight);
+    el("btnCallVote").addEventListener("click", callVote);
+    el("btnFastNight").addEventListener("click", fastNight);
+    el("btnVote").addEventListener("click", vote);
+    el("btnAction").addEventListener("click", action);
 
     ensureAuth();
   </script>
