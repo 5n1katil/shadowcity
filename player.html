@@ -182,6 +182,12 @@
     const me = myPlayer();
     if (!me) return;
 
+    const discussionArea = el("discussionArea");
+    const voteArea = el("voteArea");
+    const actionArea = el("actionArea");
+    const btnCallVote = el("btnRequestVote");
+    const btnFastNight = el("btnRequestNight");
+
     // dead
     if (!me.alive) {
       show(el("discussionArea"), false);
@@ -193,19 +199,31 @@
     }
 
     // default
-    show(el("discussionArea"), false);
-    show(el("voteArea"), false);
-    show(el("actionArea"), false);
+    discussionArea.style.display = "";
+    voteArea.style.display = "";
+    actionArea.style.display = "";
+    show(discussionArea, false);
+    show(voteArea, false);
+    show(actionArea, false);
     setSleep(false);
+    btnCallVote.disabled = false;
+    if (btnFastNight) btnFastNight.disabled = false;
 
     if (state?.phase === PHASE.WAITING) {
-      show(el("discussionArea"), true);
+      discussionArea.style.display = "none";
+      voteArea.style.display = "none";
+      actionArea.style.display = "none";
+      setSleep(false);
+      btnCallVote.disabled = true;
+      if (btnFastNight) btnFastNight.disabled = true;
       el("reqHint").textContent = "Host oyunu başlatınca rolün gelir.";
       return;
     }
 
     if (state?.phase === PHASE.DISCUSSION) {
-      show(el("discussionArea"), true);
+      show(discussionArea, true);
+      btnCallVote.disabled = false;
+      if (btnFastNight) btnFastNight.disabled = false;
       renderVoteSelect();
       el("reqHint").textContent = "Çoğunluk isterse host otomatik geçiş yapar.";
       return;
