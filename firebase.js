@@ -96,14 +96,14 @@ export const nightActionMeRef = (code, kind, uid) =>
 
 export const nightResultsRef = (code) => ref(db, `rooms/${code}/night/results`);
 
-export const requestsRef = (code) => ref(db, `rooms/${code}/requests`);
-export const requestVoteStartRef = (code) => ref(db, `rooms/${code}/requests/voteStart`);
+export const requestsRef = (code) => ref(db, `rooms/${code}/day`);
+export const requestVoteStartRef = (code) => ref(db, `rooms/${code}/day/voteCall/requests`);
 export const requestVoteStartMeRef = (code, uid) =>
-  ref(db, `rooms/${code}/requests/voteStart/${uid}`);
+  ref(db, `rooms/${code}/day/voteCall/requests/${uid}`);
 
-export const requestFastNightRef = (code) => ref(db, `rooms/${code}/requests/fastNight`);
+export const requestFastNightRef = (code) => ref(db, `rooms/${code}/day/fastNight/requests`);
 export const requestFastNightMeRef = (code, uid) =>
-  ref(db, `rooms/${code}/requests/fastNight/${uid}`);
+  ref(db, `rooms/${code}/day/fastNight/requests/${uid}`);
 
 export const hostHeartbeatRef = (code) => ref(db, `rooms/${code}/host/heartbeat`);
 export const hostUidRef = (code) => ref(db, `rooms/${code}/host/uid`);
