@@ -108,17 +108,19 @@
     playersRef, stateRef, settingsRef, playerRef,
     secretRoleRef,
     requestVoteStartMeRef, requestFastNightMeRef,
+    requestVoteStartRef, requestFastNightRef,
     votingVoteMeRef,
     nightActionMeRef,
     listen, get, set, update
   } from "./firebase.js";
 
-  import { PHASE, ROLES, ROLE_TR, ACTIONS, mergeSettings, aliveUids } from "./shared.js";
+  import { PHASE, ROLES, ROLE_TR, ACTIONS, mergeSettings, aliveUids, strictMajority } from "./shared.js";
 
   const el = (id)=>document.getElementById(id);
 
   let roomCode=null, myUid=null;
   let players={}, state={}, settings={}, myRole=null;
+  let voteRequests={}, fastNightRequests={};
   let lastPhase=null;
 
   const DEFAULT_VOTE_LABEL = "OYLAMA BAŞLAT";
@@ -176,6 +178,25 @@
     el("targetSelect").innerHTML = opts.map(o=>`<option value="${o.uid}">${escapeHtml(o.name)}</option>`).join("");
   }
 
+  function requestStatusText(label, requests){
+    const aliveList = aliveUids(players||{});
+    const aliveSet = new Set(aliveList);
+
+    let count = 0;
+    for (const [uid, val] of Object.entries(requests || {})) {
+      if (!val) continue;
+      if (aliveSet.has(uid)) count++;
+    }
+
+    const maj = strictMajority(aliveList.length || 0);
+    return `${label}: ${count} / ${maj || "?"}`;
+  }
+
+  function renderRequestStatuses(){
+    el("voteCallStatus").textContent = requestStatusText("Oylama isteği", voteRequests);
+    el("fastNightStatus").textContent = requestStatusText("Gece isteği", fastNightRequests);
+  }
+
   function updateUI(){
     el("roomPill").textContent = roomCode || "—";
     el("phasePill").textContent = state?.phase || "—";
@@ -195,6 +216,8 @@
     const btnFastNight = el("btnRequestNight");
     const voteCallStatus = el("voteCallStatus");
     const fastNightStatus = el("fastNightStatus");
+
+    renderRequestStatuses();
 
     // dead
     if (!me.alive) {
@@ -243,6 +266,7 @@
       show(discussionArea, true);
       show(voteCallStatus, true);
       show(fastNightStatus, true);
+      renderRequestStatuses();
       renderVoteSelect();
       el("reqHint").textContent = "Çoğunluk isterse host otomatik geçiş yapar.";
       lastPhase = state?.phase || null;
@@ -342,10 +366,15 @@
     show(el("joinScreen"), false);
     show(el("gameScreen"), true);
 
+    voteRequests = {};
+    fastNightRequests = {};
+
     listen(playersRef(roomCode), (v)=>{ players=v||{}; updateUI(); });
     listen(stateRef(roomCode), (v)=>{ state=v||{}; updateUI(); });
     listen(settingsRef(roomCode), (v)=>{ settings=v||{}; updateUI(); });
     listen(secretRoleRef(roomCode, myUid), (v)=>{ myRole=v||null; updateUI(); });
+    listen(requestVoteStartRef(roomCode), (v)=>{ voteRequests=v||{}; updateUI(); });
+    listen(requestFastNightRef(roomCode), (v)=>{ fastNightRequests=v||{}; updateUI(); });
 
     updateUI();
   }
@@ -354,12 +383,11 @@
     const me = myPlayer();
     if (!me || !me.alive) return;
     const btn = el("btnRequestVote");
-    const status = el("voteCallStatus");
-    const aliveCount = aliveUids(players||{}).length;
 
     btn.disabled = true;
     btn.textContent = "Katıldın ✓ (diğerleri bekleniyor…)";
-    status.textContent = `Oylama isteği: 1 / ${aliveCount || "?"}`;
+    voteRequests = { ...(voteRequests || {}), [myUid]: true };
+    renderRequestStatuses();
     await set(requestVoteStartMeRef(roomCode, myUid), true);
   }
 
@@ -367,12 +395,11 @@
     const me = myPlayer();
     if (!me || !me.alive) return;
     const btn = el("btnRequestNight");
-    const status = el("fastNightStatus");
-    const aliveCount = aliveUids(players||{}).length;
 
     btn.disabled = true;
     btn.textContent = "Katıldın ✓ (diğerleri bekleniyor…)";
-    status.textContent = `Gece isteği: 1 / ${aliveCount || "?"}`;
+    fastNightRequests = { ...(fastNightRequests || {}), [myUid]: true };
+    renderRequestStatuses();
     await set(requestFastNightMeRef(roomCode, myUid), true);
   }
 
@@ -398,7 +425,6 @@
     await set(nightActionMeRef(roomCode, kind, myUid), el("targetSelect").value);
     el("actionHint").textContent = "Gönderildi. Bekle…";
   }
-
   el("btnJoin").addEventListener("click", join);
   el("btnRequestVote").addEventListener("click", reqVote);
   el("btnRequestNight").addEventListener("click", reqNight);
