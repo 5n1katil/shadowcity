@@ -240,8 +240,8 @@
 
     // reset request nodes
     await update(ref(db, `rooms/${roomCode}`), {
-      "requests/voteStart": null,
-      "requests/fastNight": null,
+      "day/voteCall/requests": null,
+      "day/fastNight/requests": null,
       "voting/votes": null,
       "night/actions": null,
       "night/results": null,
@@ -287,8 +287,8 @@
     patch[`rooms/${roomCode}/voting/votes`] = null;
     patch[`rooms/${roomCode}/night/actions`] = null;
     patch[`rooms/${roomCode}/night/results`] = null;
-    patch[`rooms/${roomCode}/requests/voteStart`] = null;
-    patch[`rooms/${roomCode}/requests/fastNight`] = null;
+    patch[`rooms/${roomCode}/day/voteCall/requests`] = null;
+    patch[`rooms/${roomCode}/day/fastNight/requests`] = null;
 
     // go to discussion day 1
     patch[`rooms/${roomCode}/state`] = {
