@@ -60,8 +60,10 @@
 
         <div style="height:10px"></div>
         <button class="btn" id="btnRequestVote">OYLAMA BAŞLAT</button>
+        <div class="sub muted hidden" style="margin-top:6px" id="voteCallStatus">—</div>
         <div style="height:8px"></div>
         <button class="btn" id="btnRequestNight">UYUYALIM</button>
+        <div class="sub muted hidden" style="margin-top:6px" id="fastNightStatus">—</div>
 
         <div class="sub" style="margin-top:10px" id="reqHint">—</div>
       </div>
@@ -117,6 +119,10 @@
 
   let roomCode=null, myUid=null;
   let players={}, state={}, settings={}, myRole=null;
+  let lastPhase=null;
+
+  const DEFAULT_VOTE_LABEL = "OYLAMA BAŞLAT";
+  const DEFAULT_NIGHT_LABEL = "UYUYALIM";
 
   function escapeHtml(s){
     return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;")
@@ -187,6 +193,8 @@
     const actionArea = el("actionArea");
     const btnCallVote = el("btnRequestVote");
     const btnFastNight = el("btnRequestNight");
+    const voteCallStatus = el("voteCallStatus");
+    const fastNightStatus = el("fastNightStatus");
 
     // dead
     if (!me.alive) {
@@ -205,9 +213,9 @@
     show(discussionArea, false);
     show(voteArea, false);
     show(actionArea, false);
+    show(voteCallStatus, false);
+    show(fastNightStatus, false);
     setSleep(false);
-    btnCallVote.disabled = false;
-    if (btnFastNight) btnFastNight.disabled = false;
 
     if (state?.phase === PHASE.WAITING) {
       discussionArea.style.display = "none";
@@ -216,27 +224,60 @@
       setSleep(false);
       btnCallVote.disabled = true;
       if (btnFastNight) btnFastNight.disabled = true;
+      show(voteCallStatus, false);
+      show(fastNightStatus, false);
       el("reqHint").textContent = "Host oyunu başlatınca rolün gelir.";
+      lastPhase = state?.phase || null;
       return;
     }
 
     if (state?.phase === PHASE.DISCUSSION) {
+      if (lastPhase !== PHASE.DISCUSSION) {
+        btnCallVote.textContent = DEFAULT_VOTE_LABEL;
+        btnCallVote.disabled = false;
+        if (btnFastNight) {
+          btnFastNight.textContent = DEFAULT_NIGHT_LABEL;
+          btnFastNight.disabled = false;
+        }
+      }
       show(discussionArea, true);
-      btnCallVote.disabled = false;
-      if (btnFastNight) btnFastNight.disabled = false;
+      show(voteCallStatus, true);
+      show(fastNightStatus, true);
       renderVoteSelect();
       el("reqHint").textContent = "Çoğunluk isterse host otomatik geçiş yapar.";
+      lastPhase = state?.phase || null;
       return;
     }
 
     if (state?.phase === PHASE.VOTING) {
+      if (lastPhase === PHASE.DISCUSSION) {
+        btnCallVote.textContent = DEFAULT_VOTE_LABEL;
+        btnCallVote.disabled = false;
+        if (btnFastNight) {
+          btnFastNight.textContent = DEFAULT_NIGHT_LABEL;
+          btnFastNight.disabled = false;
+        }
+      }
+      show(voteCallStatus, false);
+      show(fastNightStatus, false);
       show(el("voteArea"), true);
       renderVoteSelect();
+      lastPhase = state?.phase || null;
       return;
     }
 
     // night: sadece awakeRole = benim rolümse aç
     if ([PHASE.NIGHT_KILL, PHASE.NIGHT_DOCTOR, PHASE.NIGHT_DETECTIVE].includes(state?.phase)) {
+      if (lastPhase === PHASE.DISCUSSION) {
+        btnCallVote.textContent = DEFAULT_VOTE_LABEL;
+        btnCallVote.disabled = false;
+        if (btnFastNight) {
+          btnFastNight.textContent = DEFAULT_NIGHT_LABEL;
+          btnFastNight.disabled = false;
+        }
+      }
+      show(voteCallStatus, false);
+      show(fastNightStatus, false);
       const awake = state?.awakeRole;
       if (awake && role === awake) {
         show(el("actionArea"), true);
@@ -258,6 +299,7 @@
       } else {
         setSleep(true);
       }
+      lastPhase = state?.phase || null;
       return;
     }
 
@@ -266,13 +308,17 @@
       show(el("voteArea"), false);
       show(el("actionArea"), false);
       setSleep(false);
+      lastPhase = state?.phase || null;
       return;
     }
 
     if (state?.phase === PHASE.ENDED) {
       setSleep(false);
+      lastPhase = state?.phase || null;
       return;
     }
+
+    lastPhase = state?.phase || null;
   }
 
   async function join(){
@@ -307,12 +353,26 @@
   async function reqVote(){
     const me = myPlayer();
     if (!me || !me.alive) return;
+    const btn = el("btnRequestVote");
+    const status = el("voteCallStatus");
+    const aliveCount = aliveUids(players||{}).length;
+
+    btn.disabled = true;
+    btn.textContent = "Katıldın ✓ (diğerleri bekleniyor…)";
+    status.textContent = `Oylama isteği: 1 / ${aliveCount || "?"}`;
     await set(requestVoteStartMeRef(roomCode, myUid), true);
   }
 
   async function reqNight(){
     const me = myPlayer();
     if (!me || !me.alive) return;
+    const btn = el("btnRequestNight");
+    const status = el("fastNightStatus");
+    const aliveCount = aliveUids(players||{}).length;
+
+    btn.disabled = true;
+    btn.textContent = "Katıldın ✓ (diğerleri bekleniyor…)";
+    status.textContent = `Gece isteği: 1 / ${aliveCount || "?"}`;
     await set(requestFastNightMeRef(roomCode, myUid), true);
   }
 
