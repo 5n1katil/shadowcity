@@ -95,6 +95,7 @@ export const nightActionMeRef = (code, kind, uid) =>
   ref(db, `rooms/${code}/night/actions/${kind}/${uid}`);
 
 export const nightResultsRef = (code) => ref(db, `rooms/${code}/night/results`);
+export const dayResultsRef = (code) => ref(db, `rooms/${code}/day/results`);
 
 export const requestsRef = (code) => ref(db, `rooms/${code}/day`);
 export const requestVoteStartRef = (code) => ref(db, `rooms/${code}/day/voteCall/requests`);
