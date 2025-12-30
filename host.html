@@ -37,15 +37,15 @@
           <div class="col">
             <div class="label">Doktor</div>
             <select id="includeDoctor">
-              <option value="true" selected>Var</option>
-              <option value="false">Yok</option>
+              <option value="false" selected>Kapalı</option>
+              <option value="true">Açık</option>
             </select>
           </div>
           <div class="col">
             <div class="label">Dedektif</div>
             <select id="includeDetective">
-              <option value="true" selected>Var</option>
-              <option value="false">Yok</option>
+              <option value="false" selected>Kapalı</option>
+              <option value="true">Açık</option>
             </select>
           </div>
         </div>
@@ -61,22 +61,11 @@
             <div class="label">Oylama (sn)</div>
             <input id="voteSec" value="45"/>
           </div>
-          <div class="col">
-            <div class="label">Gece (sn)</div>
-            <input id="nightSec" value="45"/>
-          </div>
         </div>
 
         <div style="height:10px"></div>
 
         <div class="row">
-          <div class="col">
-            <div class="label">NO KILL</div>
-            <select id="allowNoKill">
-              <option value="true" selected>Açık</option>
-              <option value="false">Kapalı</option>
-            </select>
-          </div>
           <div class="col">
             <div class="label">Doktor kendini koruma</div>
             <select id="doctorSelfSaveMax">
@@ -102,7 +91,6 @@
 
           <div class="label">Oyuncular</div>
           <div class="list" id="playersList" style="margin-top:8px"></div>
-
           <div style="height:12px"></div>
           <button class="btn" id="btnStart" disabled>OYUNU BAŞLAT</button>
           <div class="sub" id="hint" style="margin-top:8px">En az 3 oyuncu katılmalı.</div>
@@ -113,7 +101,7 @@
       <a class="pill" href="./index.html">↩ Ana Menü</a>
     </div>
   </div>
-
+  
   <!-- RUN (fullscreen timer) -->
   <div class="fullscreen hidden" id="runScreen">
     <div class="pill" id="runTopPill">—</div>
@@ -139,14 +127,21 @@
   } from "./shared.js";
 
   const el = (id)=>document.getElementById(id);
+  const NIGHT_STAGE_MS = 60000;
 
   let roomCode = null;
+  let myUid = null;
   let creatorUid = null;
 
   let players = {};
   let settings = null;
   let state = null;
   let rolesByUid = {};
+  let lastSpokenPhase = null;
+
+  function isHostController(){
+    return settings?.creatorUid && myUid && settings.creatorUid === myUid;
+  }
 
   // -------- UI helpers ----------
   function showSetup(){ el("setupScreen").classList.remove("hidden"); el("runScreen").classList.add("hidden"); }
@@ -164,6 +159,27 @@
     return `${mm}:${ss}`;
   }
 
+  function phaseInstruction(phase){
+    switch(phase){
+      case PHASE.DISCUSSION: return "Tartışma zamanı. Süre bitince gece olacak.";
+      case PHASE.VOTING: return "Oylama başladı. Telefonundan oy ver.";
+      case PHASE.NIGHT_KILL: return "Şimdi herkes gözlerini kapatsın. Gece oluyor. Katiller uyanın. Kurban seçin.";
+      case PHASE.NIGHT_DOCTOR: return "Doktor uyan. Birini koru.";
+      case PHASE.NIGHT_DETECTIVE: return "Dedektif uyan. Birini sorgula.";
+      case PHASE.MORNING: return "Sabah oldu. Herkes gözlerini açsın.";
+      default: return null;
+    }
+  }
+
+  function countAliveRequests(requests, aliveList){
+    const aliveSet = new Set(aliveList || []);
+    let c = 0;
+    for (const [uid, val] of Object.entries(requests || {})) {
+      if (val && aliveSet.has(uid)) c++;
+    }
+    return c;
+  }
+
   // countdown loop
   let tmr = null;
   function startCountdownLoop(){
@@ -171,7 +187,7 @@
     tmr = setInterval(()=>{
       if (!state?.timerEndsAt) { el("countdown").textContent = "—"; return; }
       el("countdown").textContent = fmt(state.timerEndsAt - Date.now());
-    }, 200);
+    }, 250);
   }
 
   function getSettingsFromUI(){
@@ -181,8 +197,6 @@
       includeDetective: el("includeDetective").value === "true",
       discussionSec: clampInt(el("discussionSec").value, 30, 9999, 300),
       voteSec: clampInt(el("voteSec").value, 15, 9999, 45),
-      nightSec: clampInt(el("nightSec").value, 10, 9999, 45),
-      allowNoKill: el("allowNoKill").value === "true",
       doctorSelfSaveMax: clampInt(el("doctorSelfSaveMax").value, 0, 9, 1),
     });
   }
@@ -208,7 +222,8 @@
 
   async function readSettings(){
     const snap = await get(settingsRef(roomCode));
-    return mergeSettings(snap.exists() ? snap.val() : getSettingsFromUI());
+    const base = snap.exists() ? snap.val() : { ...getSettingsFromUI(), creatorUid };
+    return mergeSettings(base);
   }
 
   async function readSecretRoles(){
@@ -219,6 +234,7 @@
   // -------- Room create ----------
   async function createRoom(){
     const u = await ensureAuth();
+    myUid = u.uid;
     creatorUid = u.uid;
 
     roomCode = generateRoomCode(6);
@@ -226,7 +242,7 @@
 
     await joinRoomAsHost(roomCode, el("hostName").value || "HOST");
 
-    settings = getSettingsFromUI();
+    settings = { ...getSettingsFromUI(), creatorUid };
 
     await set(settingsRef(roomCode), { creatorUid, createdAt: nowMs(), ...settings });
 
@@ -294,9 +310,10 @@
     patch[`rooms/${roomCode}/state`] = {
       phase: PHASE.DISCUSSION,
       day: 1,
-      hostText: "Gün 1: Tartışma başladı.",
+      hostText: phaseInstruction(PHASE.DISCUSSION),
       timerEndsAt: nowMs() + settings.discussionSec * 1000,
       createdAt: nowMs(),
+      awakeRole: null,
     };
 
     await update(ref(db,"/"), patch);
@@ -305,12 +322,10 @@
     showRun();
     wireRunListeners();
     startCountdownLoop();
-
-    speakTR("Gün bir. Tartışma başladı.");
   }
 
   // -------- RUN listeners + state machine ----------
-  let unsubRunState=null, unsubRunPlayers=null, unsubReqVote=null, unsubReqFast=null;
+  let unsubRunState=null, unsubRunPlayers=null, unsubReqVote=null, unsubReqFast=null, unsubSettings=null;
   let machineTick=null;
 
   function wireRunListeners(){
@@ -319,10 +334,12 @@
     if (unsubRunPlayers) unsubRunPlayers();
     if (unsubReqVote) unsubReqVote();
     if (unsubReqFast) unsubReqFast();
+    if (unsubSettings) unsubSettings();
     if (machineTick) clearInterval(machineTick);
 
-    unsubRunState = listen(stateRef(roomCode), (v)=>{ state=v||{}; renderRunTop(); });
+    unsubRunState = listen(stateRef(roomCode), (v)=>{ state=v||{}; renderRunTop(); maybeSpeakPhase(); });
     unsubRunPlayers = listen(playersRef(roomCode), (v)=>{ players=v||{}; });
+    unsubSettings = listen(settingsRef(roomCode), (v)=>{ settings = mergeSettings(v||{}); });
     unsubReqVote = listen(requestVoteStartRef(roomCode), (v)=>{ /* value polled in tick */ });
     unsubReqFast = listen(requestFastNightRef(roomCode), (v)=>{ /* value polled in tick */ });
 
@@ -338,62 +355,66 @@
     el("runText").textContent = state?.hostText || "—";
   }
 
+  function maybeSpeakPhase(){
+    const phase = state?.phase;
+    if (!phase || phase === lastSpokenPhase) return;
+    lastSpokenPhase = phase;
+    const txt = phaseInstruction(phase);
+    if (txt) speakTR(txt);
+  }
+
   async function hostStateMachine(){
     if (!roomCode || !state) return;
+    if (!isHostController()) return;
 
-    // Timer bitti mi?
     const ended = state.timerEndsAt && Date.now() >= state.timerEndsAt;
+    const phase = state.phase;
 
-    // Faz başına otomatik geçiş
-    if (state.phase === PHASE.DISCUSSION) {
-      // çoğunlukla vote veya night isteği
-      const alive = aliveUids(players).length;
-      const maj = strictMajority(alive);
+    if (phase === PHASE.DISCUSSION) {
+      const aliveList = aliveUids(players);
+      const maj = strictMajority(aliveList.length);
 
       const [vs, ns] = await Promise.all([
         get(requestVoteStartRef(roomCode)),
         get(requestFastNightRef(roomCode))
       ]);
 
-      const voteReq = vs.exists() ? Object.keys(vs.val()||{}).length : 0;
-      const nightReq = ns.exists() ? Object.keys(ns.val()||{}).length : 0;
+      const voteReq = countAliveRequests(vs.exists() ? vs.val() : {}, aliveList);
+      const nightReq = countAliveRequests(ns.exists() ? ns.val() : {}, aliveList);
 
-      if (voteReq >= maj) return startVotingAuto("Oyuncular oylama istedi.");
-      if (nightReq >= maj) return startNightKillAuto("Oyuncular uyumak istedi.");
-
+      if (voteReq >= maj) return startVotingAuto("Oylama isteği çoğunluğa ulaştı.");
+      if (nightReq >= maj) return startNightKillAuto("Uyuma isteği çoğunluğa ulaştı.");
       if (ended) return startNightKillAuto("Süre doldu. Gece oluyor.");
       return;
     }
 
-    if (state.phase === PHASE.VOTING) {
-      // herkes oy verdiyse erken bitir
-      const alive = aliveUids(players);
+    if (phase === PHASE.VOTING) {
+      const aliveList = aliveUids(players);
       const snap = await get(votingVotesRef(roomCode));
       const votes = snap.exists() ? (snap.val()||{}) : {};
       const votedCount = Object.keys(votes).length;
 
-      if (votedCount >= alive.length) return resolveVotingAuto(votes);
+      if (votedCount >= aliveList.length) return resolveVotingAuto(votes);
       if (ended) return resolveVotingAuto(votes);
       return;
     }
 
-    if (state.phase === PHASE.NIGHT_KILL || state.phase === PHASE.NIGHT_DOCTOR || state.phase === PHASE.NIGHT_DETECTIVE) {
-      // gerekli rol sahipleri aksiyon verdiyse erken bitir
+    if ([PHASE.NIGHT_KILL, PHASE.NIGHT_DOCTOR, PHASE.NIGHT_DETECTIVE].includes(phase)) {
       const roles = await readSecretRoles();
       rolesByUid = roles || {};
 
       const actionSnap = await get(nightActionsRef(roomCode));
       const actions = actionSnap.exists() ? (actionSnap.val()||{}) : {};
 
-      const alive = aliveUids(players);
+      const aliveList = aliveUids(players);
 
-      const killers = alive.filter(uid => rolesByUid?.[uid]?.role === ROLES.KILLER);
-      const doctors = alive.filter(uid => rolesByUid?.[uid]?.role === ROLES.DOCTOR);
-      const detectives = alive.filter(uid => rolesByUid?.[uid]?.role === ROLES.DETECTIVE);
+      const killers = aliveList.filter(uid => rolesByUid?.[uid]?.role === ROLES.KILLER);
+      const doctors = aliveList.filter(uid => rolesByUid?.[uid]?.role === ROLES.DOCTOR);
+      const detectives = aliveList.filter(uid => rolesByUid?.[uid]?.role === ROLES.DETECTIVE);
 
       const kind =
-        state.phase === PHASE.NIGHT_KILL ? "kill" :
-        state.phase === PHASE.NIGHT_DOCTOR ? "protect" : "investigate";
+        phase === PHASE.NIGHT_KILL ? "kill" :
+        phase === PHASE.NIGHT_DOCTOR ? "protect" : "investigate";
 
       const needed =
         kind === "kill" ? killers :
@@ -403,14 +424,12 @@
       const submitted = Object.keys(actions?.[kind] || {});
       const allDone = needed.length === 0 || needed.every(uid => submitted.includes(uid));
 
-      if (allDone) return advanceNightStageAuto(actions, rolesByUid);
-      if (ended) return advanceNightStageAuto(actions, rolesByUid);
+      if (allDone || ended) return advanceNightStageAuto(actions, rolesByUid);
       return;
     }
 
-    if (state.phase === PHASE.MORNING) {
-      if (ended) return startDiscussionNextDayAuto();
-      return;
+    if (phase === PHASE.MORNING) {
+      return startDiscussionNextDayAuto();
     }
   }
 
@@ -419,28 +438,31 @@
     settings = await readSettings();
     await set(votingVotesRef(roomCode), null);
     await set(requestVoteStartRef(roomCode), null);
+    await set(requestFastNightRef(roomCode), null);
+
+    const hostText = `${reason ? `${reason} ` : ""}${phaseInstruction(PHASE.VOTING)}`;
 
     await update(stateRef(roomCode), {
       phase: PHASE.VOTING,
-      hostText: reason || "Oylama başladı.",
+      hostText,
       timerEndsAt: nowMs() + settings.voteSec * 1000
     });
-    speakTR("Oylama başladı.");
   }
 
   async function startNightKillAuto(reason){
     settings = await readSettings();
     await set(nightActionsRef(roomCode), null);
     await set(requestFastNightRef(roomCode), null);
+    await set(requestVoteStartRef(roomCode), null);
+
+    const hostText = `${reason ? `${reason} ` : ""}${phaseInstruction(PHASE.NIGHT_KILL)}`;
 
     await update(stateRef(roomCode), {
       phase: PHASE.NIGHT_KILL,
-      hostText: reason || "Gece oldu. Katiller uyanıyor.",
-      timerEndsAt: nowMs() + settings.nightSec * 1000,
+      hostText,
+      timerEndsAt: nowMs() + NIGHT_STAGE_MS,
       awakeRole: ROLES.KILLER
     });
-
-    speakTR("Gece oldu. Katiller uyanıyor.");
   }
 
   async function resolveVotingAuto(votes){
@@ -454,13 +476,12 @@
     if (!best || tie || best === ACTIONS.SKIP_VOTE || bestCount < maj) {
       await update(stateRef(roomCode), {
         phase: PHASE.NIGHT_KILL,
-        hostText: "Oylama bitti. Kimse elenmedi. Gece oluyor.",
-        timerEndsAt: nowMs() + settings.nightSec * 1000,
+        hostText: phaseInstruction(PHASE.NIGHT_KILL),
+        timerEndsAt: nowMs() + NIGHT_STAGE_MS,
         awakeRole: ROLES.KILLER
       });
       await set(votingVotesRef(roomCode), null);
       await set(requestVoteStartRef(roomCode), null);
-      speakTR("Oylama bitti. Kimse elenmedi. Gece oluyor.");
       return;
     }
 
@@ -492,15 +513,13 @@
     // geceye geç
     await update(stateRef(roomCode), {
       phase: PHASE.NIGHT_KILL,
-      hostText: `${name} elendi. Gece oluyor.`,
-      timerEndsAt: nowMs() + settings.nightSec * 1000,
+      hostText: `${name} elendi. ${phaseInstruction(PHASE.NIGHT_KILL)}`,
+      timerEndsAt: nowMs() + NIGHT_STAGE_MS,
       awakeRole: ROLES.KILLER
     });
 
     await set(votingVotesRef(roomCode), null);
     await set(requestVoteStartRef(roomCode), null);
-
-    speakTR(`${name} elendi. Gece oluyor.`);
   }
 
   async function advanceNightStageAuto(actions, roles){
@@ -509,23 +528,23 @@
     if (state.phase === PHASE.NIGHT_KILL) {
       // doktor varsa -> doctor, yoksa detective, yoksa resolve
       if (settings.includeDoctor) {
+        await set(ref(db, `rooms/${roomCode}/night/actions/protect`), null);
         await update(stateRef(roomCode), {
           phase: PHASE.NIGHT_DOCTOR,
-          hostText: "Doktor uyanıyor.",
-          timerEndsAt: nowMs() + settings.nightSec * 1000,
+          hostText: phaseInstruction(PHASE.NIGHT_DOCTOR),
+          timerEndsAt: nowMs() + NIGHT_STAGE_MS,
           awakeRole: ROLES.DOCTOR
         });
-        speakTR("Doktor uyanıyor.");
         return;
       }
       if (settings.includeDetective) {
+        await set(ref(db, `rooms/${roomCode}/night/actions/investigate`), null);
         await update(stateRef(roomCode), {
           phase: PHASE.NIGHT_DETECTIVE,
-          hostText: "Dedektif uyanıyor.",
-          timerEndsAt: nowMs() + settings.nightSec * 1000,
+          hostText: phaseInstruction(PHASE.NIGHT_DETECTIVE),
+          timerEndsAt: nowMs() + NIGHT_STAGE_MS,
           awakeRole: ROLES.DETECTIVE
         });
-        speakTR("Dedektif uyanıyor.");
         return;
       }
       return resolveWholeNight(actions, roles);
@@ -533,13 +552,13 @@
 
     if (state.phase === PHASE.NIGHT_DOCTOR) {
       if (settings.includeDetective) {
+        await set(ref(db, `rooms/${roomCode}/night/actions/investigate`), null);
         await update(stateRef(roomCode), {
           phase: PHASE.NIGHT_DETECTIVE,
-          hostText: "Dedektif uyanıyor.",
-          timerEndsAt: nowMs() + settings.nightSec * 1000,
+          hostText: phaseInstruction(PHASE.NIGHT_DETECTIVE),
+          timerEndsAt: nowMs() + NIGHT_STAGE_MS,
           awakeRole: ROLES.DETECTIVE
         });
-        speakTR("Dedektif uyanıyor.");
         return;
       }
       return resolveWholeNight(actions, roles);
@@ -551,16 +570,15 @@
   }
 
   async function resolveWholeNight(actions, roles){
-    // resolve kill target by killer majority (tie-> NO_KILL if allowNoKill)
+    // resolve kill target by killer majority
     const killMap = actions?.kill || {};
     const protectMap = actions?.protect || {};
     const investigateMap = actions?.investigate || {};
 
-    // tally kill (ignore NO_KILL)
+    // tally kill
     const map = new Map();
     for (const v of Object.values(killMap)) {
       if (!v) continue;
-      if (v === ACTIONS.NO_KILL) continue;
       map.set(v, (map.get(v)||0) + 1);
     }
     let killTargetUid = null, best=0, tie=false;
@@ -568,7 +586,7 @@
       if (c>best){ best=c; killTargetUid=k; tie=false; }
       else if (c===best){ tie=true; }
     }
-    if (tie) killTargetUid = settings.allowNoKill ? ACTIONS.NO_KILL : null;
+    if (tie) killTargetUid = null;
 
     // doctor (first valid)
     let doctorUid=null, doctorSaveUid=null;
@@ -659,28 +677,26 @@
     // morning -> short pause then discussion next day
     await update(stateRef(roomCode), {
       phase: PHASE.MORNING,
-      hostText: morningText,
-      timerEndsAt: nowMs() + 4000,
+      hostText: `${morningText} ${phaseInstruction(PHASE.MORNING)}`,
+      timerEndsAt: nowMs() + 2000,
       awakeRole: null
     });
-    speakTR(morningText);
   }
 
   async function startDiscussionNextDayAuto(){
     settings = await readSettings();
     const day = Number(state?.day || 1) + 1;
+    const hostText = `Gün ${day}: ${phaseInstruction(PHASE.DISCUSSION)}`;
 
     await update(stateRef(roomCode), {
       phase: PHASE.DISCUSSION,
       day,
-      hostText: `Gün ${day}: Tartışma başladı.`,
+      hostText,
       timerEndsAt: nowMs() + settings.discussionSec * 1000
     });
     // request reset
     await set(requestFastNightRef(roomCode), null);
     await set(requestVoteStartRef(roomCode), null);
-
-    speakTR(`Gün ${day}. Tartışma başladı.`);
   }
 
   // -------- events ----------
@@ -688,7 +704,7 @@
   el("btnStart").addEventListener("click", startGame);
 
   // init
-  ensureAuth().then(()=>showSetup());
+  ensureAuth().then((u)=>{ myUid = u.uid; showSetup(); });
 </script>
 
 </body>
