@@ -107,6 +107,13 @@
     <div class="pill" id="runTopPill">—</div>
     <div class="huge" id="countdown">—</div>
     <div class="sub" id="runText">—</div>
+    <div class="card" style="margin-top:14px; padding:14px; max-width:520px">
+      <div class="label">Son Gece</div>
+      <div class="sub" id="nightResultText">—</div>
+      <div style="height:10px"></div>
+      <div class="label">Yaşayan Oyuncular</div>
+      <div class="list" id="alivePlayersList" style="margin-top:8px"></div>
+    </div>
   </div>
 
 <script type="module">
@@ -134,6 +141,7 @@
   let creatorUid = null;
 
   let players = {};
+  let nightResult = null;
   let settings = null;
   let state = null;
   let rolesByUid = {};
@@ -326,6 +334,7 @@
 
   // -------- RUN listeners + state machine ----------
   let unsubRunState=null, unsubRunPlayers=null, unsubReqVote=null, unsubReqFast=null, unsubSettings=null;
+  let unsubNightResult=null;
   let machineTick=null;
 
   function wireRunListeners(){
@@ -335,13 +344,15 @@
     if (unsubReqVote) unsubReqVote();
     if (unsubReqFast) unsubReqFast();
     if (unsubSettings) unsubSettings();
+    if (unsubNightResult) unsubNightResult();
     if (machineTick) clearInterval(machineTick);
 
-    unsubRunState = listen(stateRef(roomCode), (v)=>{ state=v||{}; renderRunTop(); maybeSpeakPhase(); });
-    unsubRunPlayers = listen(playersRef(roomCode), (v)=>{ players=v||{}; });
+    unsubRunState = listen(stateRef(roomCode), (v)=>{ state=v||{}; renderRunTop(); maybeSpeakPhase(); renderStatusPanel(); });
+    unsubRunPlayers = listen(playersRef(roomCode), (v)=>{ players=v||{}; renderStatusPanel(); });
     unsubSettings = listen(settingsRef(roomCode), (v)=>{ settings = mergeSettings(v||{}); });
     unsubReqVote = listen(requestVoteStartRef(roomCode), (v)=>{ /* value polled in tick */ });
     unsubReqFast = listen(requestFastNightRef(roomCode), (v)=>{ /* value polled in tick */ });
+    unsubNightResult = listen(nightResultsRef(roomCode), (v)=>{ nightResult=v||null; renderStatusPanel(); });
 
     machineTick = setInterval(hostStateMachine, 500);
     // heartbeat (opsiyonel)
@@ -353,6 +364,54 @@
     const phase = state?.phase || "—";
     el("runTopPill").textContent = `${String(phase).toUpperCase()} • GÜN ${day}`;
     el("runText").textContent = state?.hostText || "—";
+  }
+
+  function renderStatusPanel(){
+    renderNightResult();
+    renderAlivePlayers();
+  }
+
+  function renderNightResult(){
+    const txtEl = el("nightResultText");
+    if (!txtEl) return;
+
+    if (!nightResult) {
+      txtEl.textContent = "Son gece sonucu bekleniyor.";
+      return;
+    }
+
+    const { deadName, deadUid, saved, killAttempted } = nightResult;
+    if (deadUid) {
+      txtEl.textContent = `${deadName || "Bir oyuncu"} öldü. Oyun devam ediyor.`;
+      return;
+    }
+
+    if (killAttempted && saved) {
+      txtEl.textContent = "Doktor saldırıyı engelledi. Herkes yaşıyor.";
+      return;
+    }
+
+    txtEl.textContent = "Gece kimse zarar görmedi.";
+  }
+
+  function renderAlivePlayers(){
+    const list = el("alivePlayersList");
+    if (!list) return;
+
+    const alive = aliveUids(players);
+    list.innerHTML = alive.length ? alive.map(uid=>{
+      const p = players?.[uid] || {};
+      const name = escapeHtml(p.name || "Oyuncu");
+      return `
+        <div class="item">
+          <div>
+            <b>${name}</b>
+            <div class="sub">${uid.slice(0,6)}…</div>
+          </div>
+          <span class="badge alive">LIVE</span>
+        </div>
+      `;
+    }).join("") : `<div class="sub">Oyunda canlı oyuncu yok.</div>`;
   }
 
   function maybeSpeakPhase(){
@@ -679,7 +738,7 @@
     await update(stateRef(roomCode), {
       phase: PHASE.MORNING,
       hostText: morningText,
-      timerEndsAt: nowMs() + 6000,
+      timerEndsAt: nowMs() + 10000,
       awakeRole: null
     });
     speakTR(morningText);
