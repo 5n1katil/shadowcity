@@ -114,6 +114,9 @@
       <div class="label">Yaşayan Oyuncular</div>
       <div class="list" id="alivePlayersList" style="margin-top:8px"></div>
     </div>
+    <div style="margin-top:14px">
+      <button class="btn primary hidden" id="btnRestart">YENİDEN BAŞLAT</button>
+    </div>
   </div>
 
 <script type="module">
@@ -364,11 +367,21 @@
     const phase = state?.phase || "—";
     el("runTopPill").textContent = `${String(phase).toUpperCase()} • GÜN ${day}`;
     el("runText").textContent = state?.hostText || "—";
+    renderRestartButton();
   }
 
   function renderStatusPanel(){
     renderNightResult();
     renderAlivePlayers();
+  }
+
+  function renderRestartButton(){
+    const btn = el("btnRestart");
+    if (!btn) return;
+
+    const show = state?.phase === PHASE.ENDED;
+    btn.classList.toggle("hidden", !show);
+    btn.disabled = !isHostController();
   }
 
   function renderNightResult(){
@@ -420,6 +433,12 @@
     lastSpokenPhase = phase;
     const txt = phaseInstruction(phase);
     if (txt) speakTR(txt);
+  }
+
+  function currentPlayerUids(){
+    return Object.entries(players || {})
+      .filter(([, p]) => p && !p.isHost)
+      .map(([uid]) => uid);
   }
 
   async function hostStateMachine(){
@@ -507,6 +526,51 @@
       hostText,
       timerEndsAt: nowMs() + settings.voteSec * 1000
     });
+  }
+
+  async function restartGame(){
+    if (!isHostController()) return;
+
+    settings = await readSettings();
+    const allPlayers = currentPlayerUids();
+    if (allPlayers.length < 3) return;
+
+    const deck = makeRoleDeck(allPlayers, settings);
+    const patch = {};
+
+    await update(ref(db, `rooms/${roomCode}`), {
+      "secret/roles": null,
+      "voting/votes": null,
+      "night/actions": null,
+      "night/results": null,
+      "day/voteCall/requests": null,
+      "day/fastNight/requests": null,
+    });
+
+    allPlayers.forEach((uid, i) => {
+      patch[`rooms/${roomCode}/players/${uid}/alive`] = true;
+      patch[`rooms/${roomCode}/players/${uid}/doctorSelfProtectUsed`] = 0;
+      patch[`rooms/${roomCode}/players/${uid}/diedAt`] = null;
+      patch[`rooms/${roomCode}/players/${uid}/eliminatedAt`] = null;
+
+      patch[`rooms/${roomCode}/secret/roles/${uid}`] = {
+        role: deck[i],
+        inbox: { t: nowMs(), msg: "Yeni oyun başladı. Yeni rolün verildi." }
+      };
+    });
+
+    patch[`rooms/${roomCode}/state`] = {
+      phase: PHASE.DISCUSSION,
+      day: 1,
+      hostText: phaseInstruction(PHASE.DISCUSSION),
+      timerEndsAt: nowMs() + settings.discussionSec * 1000,
+      createdAt: nowMs(),
+      awakeRole: null,
+    };
+
+    await update(ref(db, "/"), patch);
+    nightResult = null;
+    startCountdownLoop();
   }
 
   async function startNightKillAuto(reason){
@@ -762,6 +826,7 @@
   // -------- events ----------
   el("btnCreate").addEventListener("click", createRoom);
   el("btnStart").addEventListener("click", startGame);
+  el("btnRestart").addEventListener("click", restartGame);
 
   // init
   ensureAuth().then((u)=>{ myUid = u.uid; showSetup(); });
