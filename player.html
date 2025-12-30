@@ -137,13 +137,11 @@
 
   function show(elm, on){ elm.classList.toggle("hidden", !on); }
 
-  function buildTargets({includeSelf=false, allowNoKill=false}){
+  function buildTargets({includeSelf=false}){
     const alive = Object.entries(players||{})
       .filter(([uid,p])=>p && !p.isHost && p.alive);
 
     const opts = [];
-    if (allowNoKill) opts.push({ uid: ACTIONS.NO_KILL, name: "NO KILL (kimse)" });
-
     for (const [uid,p] of alive) {
       if (!includeSelf && uid === myUid) continue;
       opts.push({ uid, name: p.name || "Oyuncu" });
@@ -166,35 +164,33 @@
     const s = mergeSettings(settings);
 
     let includeSelf=false;
-    let allowNoKill=false;
 
     if (kind==="protect") {
       const used = Number(me?.doctorSelfProtectUsed||0);
       includeSelf = used < Number(s.doctorSelfSaveMax||0);
     }
-    if (kind==="kill") allowNoKill = !!s.allowNoKill;
 
-    const opts = buildTargets({includeSelf, allowNoKill});
+    const opts = buildTargets({includeSelf});
     el("targetSelect").innerHTML = opts.map(o=>`<option value="${o.uid}">${escapeHtml(o.name)}</option>`).join("");
   }
 
-  function requestStatusText(label, requests){
+  function countAliveRequests(requests){
     const aliveList = aliveUids(players||{});
     const aliveSet = new Set(aliveList);
 
     let count = 0;
     for (const [uid, val] of Object.entries(requests || {})) {
-      if (!val) continue;
-      if (aliveSet.has(uid)) count++;
+      if (val && aliveSet.has(uid)) count++;
     }
 
-    const maj = strictMajority(aliveList.length || 0);
-    return `${label}: ${count} / ${maj || "?"}`;
+    return { count, majority: strictMajority(aliveList.length || 0) };
   }
 
   function renderRequestStatuses(){
-    el("voteCallStatus").textContent = requestStatusText("Oylama isteği", voteRequests);
-    el("fastNightStatus").textContent = requestStatusText("Gece isteği", fastNightRequests);
+    const vote = countAliveRequests(voteRequests);
+    const fast = countAliveRequests(fastNightRequests);
+    el("voteCallStatus").textContent = `Oylama isteği: ${vote.count} / ${vote.majority}`;
+    el("fastNightStatus").textContent = `Uyku isteği: ${fast.count} / ${fast.majority}`;
   }
 
   function updateUI(){
@@ -216,6 +212,9 @@
     const btnFastNight = el("btnRequestNight");
     const voteCallStatus = el("voteCallStatus");
     const fastNightStatus = el("fastNightStatus");
+
+    const voteRequested = !!voteRequests?.[myUid];
+    const fastRequested = !!fastNightRequests?.[myUid];
 
     renderRequestStatuses();
 
@@ -255,20 +254,18 @@
     }
 
     if (state?.phase === PHASE.DISCUSSION) {
-      if (lastPhase !== PHASE.DISCUSSION) {
-        btnCallVote.textContent = DEFAULT_VOTE_LABEL;
-        btnCallVote.disabled = false;
-        if (btnFastNight) {
-          btnFastNight.textContent = DEFAULT_NIGHT_LABEL;
-          btnFastNight.disabled = false;
-        }
+      btnCallVote.textContent = voteRequested ? "Katıldın ✓" : DEFAULT_VOTE_LABEL;
+      btnCallVote.disabled = voteRequested;
+      if (btnFastNight) {
+        btnFastNight.textContent = fastRequested ? "Katıldın ✓" : DEFAULT_NIGHT_LABEL;
+        btnFastNight.disabled = fastRequested;
       }
       show(discussionArea, true);
       show(voteCallStatus, true);
       show(fastNightStatus, true);
       renderRequestStatuses();
       renderVoteSelect();
-      el("reqHint").textContent = "Çoğunluk isterse host otomatik geçiş yapar.";
+      el("reqHint").textContent = "Çoğunluk olunca faz otomatik değişir.";
       lastPhase = state?.phase || null;
       return;
     }
@@ -385,7 +382,7 @@
     const btn = el("btnRequestVote");
 
     btn.disabled = true;
-    btn.textContent = "Katıldın ✓ (diğerleri bekleniyor…)";
+    btn.textContent = "Katıldın ✓";
     voteRequests = { ...(voteRequests || {}), [myUid]: true };
     renderRequestStatuses();
     await set(requestVoteStartMeRef(roomCode, myUid), true);
@@ -397,7 +394,7 @@
     const btn = el("btnRequestNight");
 
     btn.disabled = true;
-    btn.textContent = "Katıldın ✓ (diğerleri bekleniyor…)";
+    btn.textContent = "Katıldın ✓";
     fastNightRequests = { ...(fastNightRequests || {}), [myUid]: true };
     renderRequestStatuses();
     await set(requestFastNightMeRef(roomCode, myUid), true);
