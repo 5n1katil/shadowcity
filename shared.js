@@ -29,19 +29,16 @@ export const PHASE = {
 
 export const ACTIONS = {
   SKIP_VOTE: "SKIP",
-  NO_KILL: "NO_KILL",
 };
 
 export const DEFAULT_SETTINGS = {
   killerCount: 1,
-  includeDoctor: true,
-  includeDetective: true,
+  includeDoctor: false,
+  includeDetective: false,
 
   discussionSec: 300, // 5 dk
   voteSec: 45,
-  nightSec: 45,
 
-  allowNoKill: true,
   doctorSelfSaveMax: 1,
 };
 
@@ -147,7 +144,7 @@ export function speakTR(text) {
 }
 
 export function resolveNight({
-  killTargetUid, // uid | NO_KILL | null
+  killTargetUid, // uid | null
   doctorSaveUid, // uid | null
   doctorUid, // uid | null
   doctorSelfUsed, // number
@@ -155,7 +152,7 @@ export function resolveNight({
 }) {
   const s = mergeSettings(settings);
 
-  if (!killTargetUid || killTargetUid === ACTIONS.NO_KILL) {
+  if (!killTargetUid) {
     return { diedUid: null, saved: false, reason: "NO_KILL" };
   }
 
