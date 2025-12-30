@@ -639,8 +639,8 @@
     // public night result
     const deadName = deadUid ? (players?.[deadUid]?.name || "Bir oyuncu") : null;
     const morningText = deadUid
-      ? `Sabah oldu. ${deadName} ölü bulundu.`
-      : "Sabah oldu. Bu gece kimse ölmedi.";
+      ? `Günaydın. Maalesef aramızdan 1 kişi eksildi, ${deadName} öldü! Oyun devam ediyor.`
+      : "Günaydın. Herkes yaşıyor. Oyun devam ediyor.";
 
     await set(nightResultsRef(roomCode), {
       t: nowMs(),
@@ -677,10 +677,11 @@
     // morning -> short pause then discussion next day
     await update(stateRef(roomCode), {
       phase: PHASE.MORNING,
-      hostText: `${morningText} ${phaseInstruction(PHASE.MORNING)}`,
+      hostText: `${morningText} Tartışma başladı.`,
       timerEndsAt: nowMs() + 2000,
       awakeRole: null
     });
+    speakTR(morningText);
   }
 
   async function startDiscussionNextDayAuto(){
@@ -706,6 +707,5 @@
   // init
   ensureAuth().then((u)=>{ myUid = u.uid; showSetup(); });
 </script>
-
 </body>
 </html>
