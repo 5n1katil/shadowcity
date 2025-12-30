@@ -675,11 +675,11 @@
       return;
     }
 
-    // morning -> short pause then discussion next day
+    // morning -> pause to show night result, then discussion next day
     await update(stateRef(roomCode), {
       phase: PHASE.MORNING,
-      hostText: `${morningText} Tartışma başladı.`,
-      timerEndsAt: nowMs() + 2000,
+      hostText: morningText,
+      timerEndsAt: nowMs() + 6000,
       awakeRole: null
     });
     speakTR(morningText);
