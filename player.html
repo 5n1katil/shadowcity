@@ -74,6 +74,9 @@
         <select id="voteSelect"></select>
         <div style="height:10px"></div>
         <button class="btn primary" id="btnVote">OY VER</button>
+        <div class="sub" style="margin-top:10px" id="voteFeedback">Henüz oy vermediniz.</div>
+        <div class="sub muted" style="margin-top:6px" id="voteLiveStatus">Oy veren: —</div>
+        <div class="sub muted" style="margin-top:4px" id="voteLiveList">Oy verenler: —</div>
       </div>
 
       <div class="card hidden" style="padding:18px" id="actionArea">
@@ -109,7 +112,7 @@
     secretRoleRef,
     requestVoteStartMeRef, requestFastNightMeRef,
     requestVoteStartRef, requestFastNightRef,
-    votingVoteMeRef,
+    votingVoteMeRef, votingVotesRef,
     nightActionMeRef,
     listen, get, set, update
   } from "./firebase.js";
@@ -120,11 +123,12 @@
 
   let roomCode=null, myUid=null;
   let players={}, state={}, settings={}, myRole=null;
-  let voteRequests={}, fastNightRequests={};
+  let voteRequests={}, fastNightRequests={}, votes={};
   let lastPhase=null;
 
   const DEFAULT_VOTE_LABEL = "OYLAMA BAŞLAT";
   const DEFAULT_NIGHT_LABEL = "UYUYALIM";
+  const DEFAULT_VOTE_BUTTON_LABEL = "OY VER";
 
   function escapeHtml(s){
     return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;")
@@ -174,8 +178,17 @@
     el("targetSelect").innerHTML = opts.map(o=>`<option value="${o.uid}">${escapeHtml(o.name)}</option>`).join("");
   }
 
+  function alivePlayerUids(){
+    return aliveUids(players || {});
+  }
+
+  function majority(n){
+    if (typeof strictMajority === "function") return strictMajority(n);
+    return Math.floor((n || 0) / 2) + 1;
+  }
+
   function countAliveRequests(requests){
-    const aliveList = aliveUids(players||{});
+    const aliveList = alivePlayerUids();
     const aliveSet = new Set(aliveList);
 
     let count = 0;
@@ -183,14 +196,41 @@
       if (val && aliveSet.has(uid)) count++;
     }
 
-    return { count, majority: strictMajority(aliveList.length || 0) };
+    return { count, total: aliveList.length, majority: majority(aliveList.length || 0) };
   }
 
   function renderRequestStatuses(){
     const vote = countAliveRequests(voteRequests);
     const fast = countAliveRequests(fastNightRequests);
-    el("voteCallStatus").textContent = `Oylama isteği: ${vote.count} / ${vote.majority}`;
-    el("fastNightStatus").textContent = `Uyku isteği: ${fast.count} / ${fast.majority}`;
+    const voteEl = el("voteCallStatus");
+    const nightEl = el("fastNightStatus");
+    if (voteEl) {
+      voteEl.textContent = `${vote.count}/${vote.total} (Çoğunluk oylamaya katılınca oylama başlar, gereken oyuncu sayısı:${vote.majority})`;
+    }
+    if (nightEl) {
+      nightEl.textContent = `${fast.count}/${fast.total} (Çoğunluk geceye geçmek isterse başlar, gereken oyuncu sayısı:${fast.majority})`;
+    }
+  }
+
+  function renderVoteLiveStatus(){
+    const statusEl = el("voteLiveStatus");
+    const listEl = el("voteLiveList");
+    const aliveList = alivePlayerUids();
+    const aliveSet = new Set(aliveList);
+
+    let count = 0;
+    const names = [];
+
+    for (const [uid, target] of Object.entries(votes || {})) {
+      if (!target) continue;
+      if (!aliveSet.has(uid)) continue;
+      count++;
+      const name = players?.[uid]?.name;
+      if (name) names.push(name);
+    }
+
+    if (statusEl) statusEl.textContent = `Oy veren: ${count}/${aliveList.length}`;
+    if (listEl) listEl.textContent = names.length ? `Oy verenler: ${names.join(", ")}` : "Oy verenler: —";
   }
 
   function updateUI(){
@@ -278,11 +318,14 @@
           btnFastNight.textContent = DEFAULT_NIGHT_LABEL;
           btnFastNight.disabled = false;
         }
+        const feedbackEl = el("voteFeedback");
+        if (feedbackEl) feedbackEl.textContent = "Henüz oy vermediniz.";
       }
       show(voteCallStatus, false);
       show(fastNightStatus, false);
       show(el("voteArea"), true);
       renderVoteSelect();
+      renderVoteLiveStatus();
       lastPhase = state?.phase || null;
       return;
     }
@@ -365,6 +408,7 @@
 
     voteRequests = {};
     fastNightRequests = {};
+    votes = {};
 
     listen(playersRef(roomCode), (v)=>{ players=v||{}; updateUI(); });
     listen(stateRef(roomCode), (v)=>{ state=v||{}; updateUI(); });
@@ -372,6 +416,7 @@
     listen(secretRoleRef(roomCode, myUid), (v)=>{ myRole=v||null; updateUI(); });
     listen(requestVoteStartRef(roomCode), (v)=>{ voteRequests=v||{}; updateUI(); });
     listen(requestFastNightRef(roomCode), (v)=>{ fastNightRequests=v||{}; updateUI(); });
+    listen(votingVotesRef(roomCode), (v)=>{ votes=v||{}; renderVoteLiveStatus(); });
 
     updateUI();
   }
@@ -403,7 +448,32 @@
   async function vote(){
     const me = myPlayer();
     if (!me || !me.alive) return;
-    await set(votingVoteMeRef(roomCode, myUid), el("voteSelect").value);
+    const btn = el("btnVote");
+    const select = el("voteSelect");
+    if (!btn || !select) return;
+
+    const choice = select.value;
+    btn.disabled = true;
+    btn.textContent = "Gönderiliyor…";
+    try {
+      await set(votingVoteMeRef(roomCode, myUid), choice);
+      const name = choice === ACTIONS.SKIP_VOTE ? "SKIP" : (players?.[choice]?.name || "Bilinmiyor");
+      const feedback = el("voteFeedback");
+      if (feedback) {
+        feedback.innerHTML = `Oyunuzu verdiniz.<br/>Oyunuzu: ${escapeHtml(name)}`;
+      }
+      btn.textContent = "Gönderildi ✅";
+    } catch (e) {
+      btn.textContent = "Tekrar dener misin?";
+    } finally {
+      setTimeout(()=>{
+        const b = el("btnVote");
+        if (b) {
+          b.textContent = DEFAULT_VOTE_BUTTON_LABEL;
+          b.disabled = false;
+        }
+      }, 1200);
+    }
   }
 
   async function action(){
