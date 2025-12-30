@@ -738,14 +738,13 @@
     await update(stateRef(roomCode), {
       phase: PHASE.MORNING,
       hostText: morningText,
-      timerEndsAt: nowMs() + 10000,
+      timerEndsAt: nowMs() + 30000,
       awakeRole: null
     });
     speakTR(morningText);
   }
 
   async function startDiscussionNextDayAuto(){
-    settings = await readSettings();
     const day = Number(state?.day || 1) + 1;
     const hostText = `Gün ${day}: ${phaseInstruction(PHASE.DISCUSSION)}`;
 
@@ -753,7 +752,7 @@
       phase: PHASE.DISCUSSION,
       day,
       hostText,
-      timerEndsAt: nowMs() + settings.discussionSec * 1000
+      timerEndsAt: nowMs() + 5 * 60 * 1000
     });
     // request reset
     await set(requestFastNightRef(roomCode), null);
