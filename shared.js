@@ -37,7 +37,7 @@ export const DEFAULT_SETTINGS = {
   includeDetective: false,
 
   discussionSec: 300, // 5 dk
-  voteSec: 45,
+  voteSec: 60,
 
   doctorSelfSaveMax: 1,
 };
