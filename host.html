@@ -429,6 +429,7 @@
     }
 
     if (phase === PHASE.MORNING) {
+      if (!ended) return; // sabah bilgisi ekranda kalsın
       return startDiscussionNextDayAuto();
     }
   }
