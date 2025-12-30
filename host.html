@@ -90,7 +90,7 @@
           <div style="height:10px"></div>
 
           <div class="label">Oyuncular</div>
-          <div class="list" id="playersList" style="margin-top:8px"></div>
+          <div class="list player-grid" id="playersList" style="margin-top:8px"></div>
           <div style="height:12px"></div>
           <button class="btn" id="btnStart" disabled>OYUNU BAŞLAT</button>
           <div class="sub" id="hint" style="margin-top:8px">En az 3 oyuncu katılmalı.</div>
@@ -112,7 +112,7 @@
       <div class="sub" id="nightResultText">—</div>
       <div style="height:10px"></div>
       <div class="label">Yaşayan Oyuncular</div>
-      <div class="list" id="alivePlayersList" style="margin-top:8px"></div>
+      <div class="list player-grid" id="alivePlayersList" style="margin-top:8px"></div>
     </div>
     <div style="margin-top:14px">
       <button class="btn primary hidden" id="btnRestart">YENİDEN BAŞLAT</button>
@@ -138,7 +138,6 @@
 
   const el = (id)=>document.getElementById(id);
   const NIGHT_STAGE_MS = 60000;
-
   let roomCode = null;
   let myUid = null;
   let creatorUid = null;
