@@ -59,7 +59,7 @@
           </div>
           <div class="col">
             <div class="label">Oylama (sn)</div>
-            <input id="voteSec" value="45"/>
+            <input id="voteSec" value="60"/>
           </div>
         </div>
 
@@ -196,7 +196,7 @@
       includeDoctor: el("includeDoctor").value === "true",
       includeDetective: el("includeDetective").value === "true",
       discussionSec: clampInt(el("discussionSec").value, 30, 9999, 300),
-      voteSec: clampInt(el("voteSec").value, 15, 9999, 45),
+      voteSec: clampInt(el("voteSec").value, 15, 9999, 60),
       doctorSelfSaveMax: clampInt(el("doctorSelfSaveMax").value, 0, 9, 1),
     });
   }
