@@ -105,6 +105,13 @@
     </div>
   </div>
 
+  <div class="overlay hidden" id="deadOverlay">
+    <div>
+      <div class="bigTitle" style="color:#ff5a5a">ÖLDÜRÜLDÜN!</div>
+      <div class="sub" style="margin-top:10px">Artık oy veremezsin, oyunu izleyebilirsin.</div>
+    </div>
+  </div>
+
 <script type="module">
   import {
     ensureAuth, joinRoomAsPlayer,
@@ -128,7 +135,7 @@
 
   const DEFAULT_VOTE_LABEL = "OYLAMA BAŞLAT";
   const DEFAULT_NIGHT_LABEL = "UYUYALIM";
-  const DEFAULT_VOTE_BUTTON_LABEL = "OY VER";
+  const DEFAULT_VOTE_BUTTON_LABEL = "OY VER";;
 
   function escapeHtml(s){
     return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;")
@@ -250,8 +257,25 @@
     el("roleText").textContent = role ? (ROLE_TR[role] || role) : "—";
     el("inboxText").textContent = myRole?.inbox?.msg || "—";
 
+    const deadOverlay = el("deadOverlay");
+    if (deadOverlay) deadOverlay.classList.add("hidden");
+
     const me = myPlayer();
     if (!me) return;
+
+    if (!me.alive) {
+      const discussionArea = el("discussionArea");
+      const voteArea = el("voteArea");
+      const actionArea = el("actionArea");
+      if (discussionArea) show(discussionArea, false);
+      if (voteArea) show(voteArea, false);
+      if (actionArea) show(actionArea, false);
+      setSleep(false);
+      const hint = el("reqHint");
+      if (hint) hint.textContent = "Elendin. Oyunu izleyebilirsin.";
+      if (deadOverlay) deadOverlay.classList.remove("hidden");
+      return;
+    }
 
     const discussionArea = el("discussionArea");
     const voteArea = el("voteArea");
@@ -266,16 +290,6 @@
     const fastRequested = !!fastNightRequests?.[myUid];
 
     renderRequestStatuses();
-
-    // dead
-    if (!me.alive) {
-      show(el("discussionArea"), false);
-      show(el("voteArea"), false);
-      show(el("actionArea"), false);
-      setSleep(false);
-      el("reqHint").textContent = "Elendin. Oyunu izleyebilirsin.";
-      return;
-    }
 
     // default
     discussionArea.style.display = "";
