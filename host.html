@@ -106,7 +106,7 @@
   <div class="fullscreen hidden" id="runScreen">
     <div class="pill" id="runTopPill">—</div>
     <div class="huge" id="countdown">—</div>
-    <div class="sub" id="runText">—</div>
+    <div class="sub hostNotice" id="runText">—</div>
     <div class="card" style="margin-top:14px; padding:14px; max-width:520px">
       <div class="label">Son Oylama</div>
       <div class="sub" id="voteResultText">—</div>
@@ -388,6 +388,11 @@
     const txtEl = el("voteResultText");
     if (!txtEl) return;
 
+    if (state?.phase === PHASE.ENDED) {
+      txtEl.textContent = state?.hostText || "Oyun bitti.";
+      return;
+    }
+
     if (!votingResult) {
       txtEl.textContent = "Henüz oylama sonucu yok.";
       return;
@@ -421,6 +426,11 @@
   function renderNightResult(){
     const txtEl = el("nightResultText");
     if (!txtEl) return;
+
+    if (state?.phase === PHASE.ENDED) {
+      txtEl.textContent = state?.hostText || "Oyun bitti.";
+      return;
+    }
 
     if (!nightResult) {
       txtEl.textContent = "Son gece sonucu bekleniyor.";
