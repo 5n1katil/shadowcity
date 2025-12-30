@@ -108,6 +108,9 @@
     <div class="huge" id="countdown">—</div>
     <div class="sub" id="runText">—</div>
     <div class="card" style="margin-top:14px; padding:14px; max-width:520px">
+      <div class="label">Son Oylama</div>
+      <div class="sub" id="voteResultText">—</div>
+      <div style="height:10px"></div>
       <div class="label">Son Gece</div>
       <div class="sub" id="nightResultText">—</div>
       <div style="height:10px"></div>
@@ -126,6 +129,7 @@
     secretRolesRef, secretRoleRef,
     votingVotesRef, nightActionsRef, nightResultsRef,
     requestVoteStartRef, requestFastNightRef,
+    dayResultsRef,
     hostHeartbeatRef,
     ref, db, get, set, update, listen, nowMs
   } from "./firebase.js";
@@ -144,6 +148,7 @@
 
   let players = {};
   let nightResult = null;
+  let votingResult = null;
   let settings = null;
   let state = null;
   let rolesByUid = {};
@@ -268,6 +273,7 @@
     await update(ref(db, `rooms/${roomCode}`), {
       "day/voteCall/requests": null,
       "day/fastNight/requests": null,
+      "day/results": null,
       "voting/votes": null,
       "night/actions": null,
       "night/results": null,
@@ -313,6 +319,7 @@
     patch[`rooms/${roomCode}/voting/votes`] = null;
     patch[`rooms/${roomCode}/night/actions`] = null;
     patch[`rooms/${roomCode}/night/results`] = null;
+    patch[`rooms/${roomCode}/day/results`] = null;
     patch[`rooms/${roomCode}/day/voteCall/requests`] = null;
     patch[`rooms/${roomCode}/day/fastNight/requests`] = null;
 
@@ -336,7 +343,7 @@
 
   // -------- RUN listeners + state machine ----------
   let unsubRunState=null, unsubRunPlayers=null, unsubReqVote=null, unsubReqFast=null, unsubSettings=null;
-  let unsubNightResult=null;
+  let unsubNightResult=null, unsubDayResult=null;
   let machineTick=null;
 
   function wireRunListeners(){
@@ -347,6 +354,7 @@
     if (unsubReqFast) unsubReqFast();
     if (unsubSettings) unsubSettings();
     if (unsubNightResult) unsubNightResult();
+    if (unsubDayResult) unsubDayResult();
     if (machineTick) clearInterval(machineTick);
 
     unsubRunState = listen(stateRef(roomCode), (v)=>{ state=v||{}; renderRunTop(); maybeSpeakPhase(); renderStatusPanel(); });
@@ -355,6 +363,7 @@
     unsubReqVote = listen(requestVoteStartRef(roomCode), (v)=>{ /* value polled in tick */ });
     unsubReqFast = listen(requestFastNightRef(roomCode), (v)=>{ /* value polled in tick */ });
     unsubNightResult = listen(nightResultsRef(roomCode), (v)=>{ nightResult=v||null; renderStatusPanel(); });
+    unsubDayResult = listen(dayResultsRef(roomCode), (v)=>{ votingResult=v||null; renderVotingResult(); });
 
     machineTick = setInterval(hostStateMachine, 500);
     // heartbeat (opsiyonel)
@@ -370,8 +379,34 @@
   }
 
   function renderStatusPanel(){
+    renderVotingResult();
     renderNightResult();
     renderAlivePlayers();
+  }
+
+  function renderVotingResult(){
+    const txtEl = el("voteResultText");
+    if (!txtEl) return;
+
+    if (!votingResult) {
+      txtEl.textContent = "Henüz oylama sonucu yok.";
+      return;
+    }
+
+    const { eliminatedUid, eliminatedName, message } = votingResult;
+    if (message) {
+      txtEl.textContent = message;
+      return;
+    }
+
+    if (eliminatedUid) {
+      const shortId = `${String(eliminatedUid).slice(0,6)}…`;
+      const name = eliminatedName || players?.[eliminatedUid]?.name || "Bir oyuncu";
+      txtEl.textContent = `${name} (${shortId}) oylama ile elendi.`;
+      return;
+    }
+
+    txtEl.textContent = "Son oylama sonucunda kimse elenmedi.";
   }
 
   function renderRestartButton(){
@@ -542,6 +577,7 @@
       "voting/votes": null,
       "night/actions": null,
       "night/results": null,
+      "day/results": null,
       "day/voteCall/requests": null,
       "day/fastNight/requests": null,
     });
@@ -597,6 +633,16 @@
 
     // kimse elenmedi
     if (!best || tie || best === ACTIONS.SKIP_VOTE || bestCount < maj) {
+      const message = "Oylamada kimse elenmedi.";
+      await set(dayResultsRef(roomCode), {
+        t: nowMs(),
+        day: state?.day || 0,
+        eliminatedUid: null,
+        eliminatedName: null,
+        message,
+        reason: "NO_ELIMINATION"
+      });
+
       await update(stateRef(roomCode), {
         phase: PHASE.NIGHT_KILL,
         hostText: phaseInstruction(PHASE.NIGHT_KILL),
@@ -610,6 +656,14 @@
 
     // ele
     const name = players?.[best]?.name || "Bir oyuncu";
+    await set(dayResultsRef(roomCode), {
+      t: nowMs(),
+      day: state?.day || 0,
+      eliminatedUid: best,
+      eliminatedName: name,
+      message: `${name} (${String(best).slice(0,6)}…) oylama ile elendi.`,
+      reason: "ELIMINATED"
+    });
     await update(playerRef(roomCode, best), { alive: false, eliminatedAt: nowMs() });
 
     const roles = await readSecretRoles();
