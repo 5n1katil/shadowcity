@@ -253,14 +253,21 @@
     el("phasePill").textContent = state?.phase || "—";
     el("publicText").textContent = state?.hostText || "—";
 
-    const role = myRole?.role || null;
-    el("roleText").textContent = role ? (ROLE_TR[role] || role) : "—";
-    el("inboxText").textContent = myRole?.inbox?.msg || "—";
+    const me = myPlayer();
+    const waiting = state?.phase === PHASE.WAITING;
+
+    if (waiting) {
+      el("roleText").textContent = me?.name || "—";
+      el("inboxText").textContent = "Host'un oyunu başlatması bekleniyor, oyun başlayınca rolünüz rastgele olarak atanacaktır.";
+    } else {
+      const role = myRole?.role || null;
+      el("roleText").textContent = role ? (ROLE_TR[role] || role) : "—";
+      el("inboxText").textContent = myRole?.inbox?.msg || "—";
+    }
 
     const deadOverlay = el("deadOverlay");
     if (deadOverlay) deadOverlay.classList.add("hidden");
 
-    const me = myPlayer();
     if (!me) return;
 
     if (!me.alive) {
@@ -311,7 +318,7 @@
       if (btnFastNight) btnFastNight.disabled = true;
       show(voteCallStatus, false);
       show(fastNightStatus, false);
-      el("reqHint").textContent = "Host oyunu başlatınca rolün gelir.";
+      el("reqHint").textContent = "Host'un oyunu başlatması bekleniyor, oyun başlayınca rolünüz rastgele olarak atanacaktır.";
       lastPhase = state?.phase || null;
       return;
     }
