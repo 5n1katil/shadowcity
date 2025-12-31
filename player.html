@@ -158,7 +158,7 @@
     try {
       if (roomCode && myUid) await set(playerRef(roomCode, myUid), null);
     } catch {}
-    window.location.href = "./index.html";
+    window.location.href = "./player.html";
   }
 
   function show(elm, on){ elm.classList.toggle("hidden", !on); }
