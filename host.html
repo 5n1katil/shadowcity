@@ -115,7 +115,7 @@
       <div class="sub" id="nightResultText">—</div>
       <div style="height:10px"></div>
       <div class="label">Yaşayan Oyuncular</div>
-      <div class="list player-grid" id="alivePlayersList" style="margin-top:8px"></div>
+      <div class="chip-list" id="alivePlayersList" style="margin-top:8px"></div>
     </div>
     <div style="margin-top:14px">
       <button class="btn danger" id="btnEndGame">OYUNU BİTİR</button>
@@ -466,19 +466,24 @@
     if (!list) return;
 
     const alive = aliveUids(players);
-    list.innerHTML = alive.length ? alive.map(uid=>{
+    if (!alive.length) {
+      list.innerHTML = `<div class="sub">Oyunda canlı oyuncu yok.</div>`;
+      return;
+    }
+
+    list.innerHTML = alive.map(uid=>{
       const p = players?.[uid] || {};
       const name = escapeHtml(p.name || "Oyuncu");
       return `
-        <div class="item">
-          <div>
-            <b>${name}</b>
-            <div class="sub">${uid.slice(0,6)}…</div>
+        <div class="chip">
+          <div class="chip-text">
+            <span class="chip-name">${name}</span>
+            <span class="chip-id">${uid.slice(0,6)}…</span>
           </div>
-          <span class="badge alive">LIVE</span>
+          <span class="chip-badge">LIVE</span>
         </div>
       `;
-    }).join("") : `<div class="sub">Oyunda canlı oyuncu yok.</div>`;
+    }).join("");
   }
 
   function maybeSpeakPhase(){
