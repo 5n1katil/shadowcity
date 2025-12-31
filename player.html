@@ -94,6 +94,10 @@
         <div class="label">HOST</div>
         <div class="sub" id="publicText" style="margin-top:6px">—</div>
       </div>
+
+      <div style="height:14px"></div>
+
+      <button class="btn danger" id="btnExitGame">OYUNDAN ÇIK</button>
     </div>
   </div>
 
@@ -102,6 +106,8 @@
     <div>
       <div class="bigTitle">UYUYORSUN…</div>
       <div class="sub" style="margin-top:10px">Sıra sende olunca ekran açılacak.</div>
+      <div style="height:14px"></div>
+      <button class="btn danger" id="btnExitSleep">OYUNDAN ÇIK</button>
     </div>
   </div>
 
@@ -132,6 +138,7 @@
   let players={}, state={}, settings={}, myRole=null;
   let voteRequests={}, fastNightRequests={}, votes={};
   let lastPhase=null;
+  let forceExitHandled=false;
 
   const DEFAULT_VOTE_LABEL = "OYLAMA BAŞLAT";
   const DEFAULT_NIGHT_LABEL = "UYUYALIM";
@@ -145,6 +152,14 @@
   function myPlayer(){ return players?.[myUid] || null; }
 
   function setSleep(on){ el("sleepOverlay").classList.toggle("hidden", !on); }
+
+  async function exitGame(){
+    forceExitHandled = true;
+    try {
+      if (roomCode && myUid) await set(playerRef(roomCode, myUid), null);
+    } catch {}
+    window.location.href = "./index.html";
+  }
 
   function show(elm, on){ elm.classList.toggle("hidden", !on); }
 
@@ -446,9 +461,14 @@
     voteRequests = {};
     fastNightRequests = {};
     votes = {};
+    forceExitHandled = false;
 
     listen(playersRef(roomCode), (v)=>{ players=v||{}; updateUI(); });
-    listen(stateRef(roomCode), (v)=>{ state=v||{}; updateUI(); });
+    listen(stateRef(roomCode), (v)=>{
+      state=v||{};
+      if (state?.endedByHost && !forceExitHandled) return exitGame();
+      updateUI();
+    });
     listen(settingsRef(roomCode), (v)=>{ settings=v||{}; updateUI(); });
     listen(secretRoleRef(roomCode, myUid), (v)=>{ myRole=v||null; updateUI(); });
     listen(requestVoteStartRef(roomCode), (v)=>{ voteRequests=v||{}; updateUI(); });
@@ -534,6 +554,8 @@
   el("btnRequestNight").addEventListener("click", reqNight);
   el("btnVote").addEventListener("click", vote);
   el("btnAction").addEventListener("click", action);
+  el("btnExitGame").addEventListener("click", exitGame);
+  el("btnExitSleep").addEventListener("click", exitGame);
 
   ensureAuth();
 </script>
