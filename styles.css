@@ -109,6 +109,38 @@ input,select{
   font-weight:800;
 }
 
+.chip-list{display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start;}
+.chip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid var(--stroke);
+  background:rgba(0,0,0,.18);
+  max-width:100%;
+}
+.chip-text{display:flex; flex-direction:column; min-width:0;}
+.chip-name{
+  font-weight:800;
+  font-size:15px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:min(200px, 42vw);
+}
+.chip-id{font-size:12px; color:var(--muted); white-space:nowrap;}
+.chip-badge{
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.06em;
+  color:#b9ffda;
+  border:1px solid rgba(185,255,218,.25);
+  border-radius:999px;
+  padding:6px 8px;
+  white-space:nowrap;
+}
+
 .list{
   display:grid;
   grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
@@ -133,7 +165,6 @@ input,select{
 }
 .badge.alive{color:#b9ffda; border-color:rgba(185,255,218,.25)}
 .badge.dead{color:#ffb3c1; border-color:rgba(255,179,193,.25)}
-
 .centerScreen{
   min-height:100svh;
   display:flex;
