@@ -682,14 +682,19 @@
         reason: "NO_ELIMINATION"
       });
 
+      await Promise.all([
+        set(nightActionsRef(roomCode), null),
+        set(requestFastNightRef(roomCode), null),
+        set(votingVotesRef(roomCode), null),
+        set(requestVoteStartRef(roomCode), null),
+      ]);
+
       await update(stateRef(roomCode), {
         phase: PHASE.NIGHT_KILL,
         hostText: phaseInstruction(PHASE.NIGHT_KILL),
         timerEndsAt: nowMs() + NIGHT_STAGE_MS,
         awakeRole: ROLES.KILLER
       });
-      await set(votingVotesRef(roomCode), null);
-      await set(requestVoteStartRef(roomCode), null);
       return;
     }
 
@@ -726,6 +731,13 @@
       return;
     }
 
+    await Promise.all([
+      set(nightActionsRef(roomCode), null),
+      set(requestFastNightRef(roomCode), null),
+      set(votingVotesRef(roomCode), null),
+      set(requestVoteStartRef(roomCode), null),
+    ]);
+
     // geceye geç
     await update(stateRef(roomCode), {
       phase: PHASE.NIGHT_KILL,
@@ -733,9 +745,6 @@
       timerEndsAt: nowMs() + NIGHT_STAGE_MS,
       awakeRole: ROLES.KILLER
     });
-
-    await set(votingVotesRef(roomCode), null);
-    await set(requestVoteStartRef(roomCode), null);
   }
 
   async function advanceNightStageAuto(actions, roles){
