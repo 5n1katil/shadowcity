@@ -1,3 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shadow City - Oyuncu</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Inter", sans-serif;
+        background: #0b1021;
+        color: #f8f8ff;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.78);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        text-align: center;
+        z-index: 10;
+      }
+      .panel {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 1.25rem;
+        background: #141a33;
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      }
+      .hidden {
+        display: none !important;
+      }
+      #actionTargets button {
+        margin: 0.35rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="overlay" id="sleepOverlay">
+      <div>
+        <div>UYUYORSUN…</div>
+        <div style="font-size: 1rem; margin-top: 0.5rem; color: #cbd5e1">
+          Gözlerin kapalı, sessiz kal.
+        </div>
+      </div>
+    </div>
+
+    <main class="panel">
+      <header>
+        <h1>Oyuncu Paneli</h1>
+        <p id="phaseText"></p>
+      </header>
+
+      <section id="actionArea" class="hidden">
+        <h2 id="actionTitle">Aksiyon</h2>
+        <p id="actionHint">Hedefini seç.</p>
+        <div id="actionTargets"></div>
+      </section>
+
+      <section id="voteArea" class="hidden">
+        <h2>Oylama</h2>
+        <div id="voteTargets"></div>
+      </section>
+
+      <section id="discussionArea" class="hidden">
+        <h2>Tartışma</h2>
+        <p>Sohbet zamanı.</p>
+      </section>
+    </main>
+
+    <script>
+      // Basit rol sabitleri
+      const ROLES = {
+        KILLER: "KATIL",
+        DOCTOR: "DOCTOR",
+        DETECTIVE: "DEDEKTIF",
+      };
+
+      // Kullanıcı rolü örneği
+      let myRole = null;
+      let state = {};
+
+      function setOverlaySleeping(show) {
+        const overlay = document.getElementById("sleepOverlay");
+        overlay.style.display = show ? "flex" : "none";
+      }
+
+      function renderActionTargets(actionType) {
+        const targetsEl = document.getElementById("actionTargets");
+        targetsEl.textContent = `Hedef seçici: ${actionType}`;
+      }
+
+      function setActionText(title, hint) {
+        document.getElementById("actionTitle").textContent = title;
+        document.getElementById("actionHint").textContent = hint;
+      }
+
+      function hideAllPanels() {
+        document.getElementById("actionArea").classList.add("hidden");
+        document.getElementById("voteArea").classList.add("hidden");
+        document.getElementById("discussionArea").classList.add("hidden");
+      }
+
+      function updateUI(nextState, nextMyRole) {
+        state = nextState || state || {};
+        myRole = nextMyRole || myRole || {};
+
+        const phase = String(state?.phase || "").toLowerCase();
+        const myRoleRaw = myRole?.role;
+
+        const isNightKill = phase === "night_kill";
+        const isNightDoctor = phase === "night_doctor";
+        const isNightDetective = phase === "night_detective";
+
+        // Varsayılan gece: herkes uyuyor, paneller kapalı
+        if (isNightKill || isNightDoctor || isNightDetective) {
+          hideAllPanels();
+          setOverlaySleeping(true);
+
+          if (isNightKill && myRoleRaw === ROLES.KILLER) {
+            setOverlaySleeping(false);
+            document.getElementById("actionArea").classList.remove("hidden");
+            setActionText("Katil", "Kurban seçin");
+            renderActionTargets("kill");
+          } else if (isNightDoctor && myRoleRaw === ROLES.DOCTOR) {
+            setOverlaySleeping(false);
+            document.getElementById("actionArea").classList.remove("hidden");
+            setActionText("Doktor", "Koruyacağın kişiyi seç");
+            renderActionTargets("protect");
+          } else if (isNightDetective && myRoleRaw === ROLES.DETECTIVE) {
+            setOverlaySleeping(false);
+            document.getElementById("actionArea").classList.remove("hidden");
+            setActionText("Dedektif", "Sorgulayacağın kişiyi seç");
+            renderActionTargets("investigate");
+          }
+
+          return;
+        }
+
+        // Gece değilse overlay kapalı, diğer paneller oyun akışına göre ayarlanabilir
+        setOverlaySleeping(false);
+      }
+    </script>
+  </body>
+</html>
+
 <!doctype html>
 <html lang="tr">
 <head>
