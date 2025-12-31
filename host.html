@@ -116,6 +116,12 @@
       <div style="height:10px"></div>
       <div class="label">Yaşayan Oyuncular</div>
       <div class="chip-list" id="alivePlayersList" style="margin-top:8px"></div>
+      <div class="label" id="endSummaryHeader" style="margin-top:10px">Oyun Sonu</div>
+      <div class="sub hidden" id="endSummaryPanel">
+        <div style="margin-top:4px"><b>Kazananlar:</b> <span id="endWinnersText">—</span></div>
+        <div style="margin-top:4px"><b>Katiller:</b> <span id="endKillersText">—</span></div>
+        <div style="margin-top:4px"><b>Tüm Oyuncular:</b> <span id="endAllText">—</span></div>
+      </div>
     </div>
     <div style="margin-top:14px">
       <button class="btn danger" id="btnEndGame">OYUNU BİTİR</button>
@@ -195,6 +201,31 @@
       if (val && aliveSet.has(uid)) c++;
     }
     return c;
+  }
+
+  function formatNameWithRole(uid, playersObj, rolesObj){
+    const name = playersObj?.[uid]?.name || "Oyuncu";
+    const role = rolesObj?.[uid]?.role;
+    if (!role) return name;
+    const roleText = ROLE_TR[role] || role;
+    return `${name} (${roleText})`;
+  }
+
+  function buildEndSummary(win, playersObj, rolesObj){
+    const entries = Object.entries(playersObj || {}).filter(([, p]) => p && !p.isHost);
+    const killerUids = entries.filter(([uid]) => rolesObj?.[uid]?.role === ROLES.KILLER).map(([uid]) => uid);
+    const townUids = entries.filter(([uid]) => rolesObj?.[uid]?.role !== ROLES.KILLER).map(([uid]) => uid);
+
+    const winners = (win?.winner === "KILLERS" ? killerUids : townUids)
+      .map((uid) => formatNameWithRole(uid, playersObj, rolesObj));
+    const killers = killerUids.map((uid) => formatNameWithRole(uid, playersObj, rolesObj));
+    const all = entries.map(([uid]) => formatNameWithRole(uid, playersObj, rolesObj));
+
+    return {
+      winnersText: winners.length ? winners.join(", ") : "—",
+      killersText: killers.length ? killers.join(", ") : "—",
+      allText: all.length ? all.join(", ") : "—",
+    };
   }
 
   // countdown loop
@@ -385,6 +416,7 @@
     renderVotingResult();
     renderNightResult();
     renderAlivePlayers();
+    renderEndSummary();
   }
 
   function renderVotingResult(){
@@ -465,6 +497,17 @@
     const list = el("alivePlayersList");
     if (!list) return;
 
+    const isEnded = state?.phase === PHASE.ENDED;
+    const endHeader = el("endSummaryHeader");
+    const endPanel = el("endSummaryPanel");
+    if (endHeader) endHeader.classList.toggle("hidden", !isEnded);
+    if (endPanel) endPanel.classList.toggle("hidden", !isEnded);
+
+    if (isEnded) {
+      list.innerHTML = `<div class="sub">Oyun bitti. Sonuçlar aşağıda.</div>`;
+      return;
+    }
+
     const alive = aliveUids(players);
     if (!alive.length) {
       list.innerHTML = `<div class="sub">Oyunda canlı oyuncu yok.</div>`;
@@ -484,6 +527,22 @@
         </div>
       `;
     }).join("");
+  }
+
+  function renderEndSummary(){
+    const panel = el("endSummaryPanel");
+    if (!panel) return;
+
+    if (state?.phase !== PHASE.ENDED) return;
+
+    const summary = state?.endSummary || {};
+    const winnersEl = el("endWinnersText");
+    const killersEl = el("endKillersText");
+    const allEl = el("endAllText");
+
+    if (winnersEl) winnersEl.textContent = summary.winnersText || "—";
+    if (killersEl) killersEl.textContent = summary.killersText || "—";
+    if (allEl) allEl.textContent = summary.allText || "—";
   }
 
   function maybeSpeakPhase(){
@@ -720,6 +779,7 @@
     const win = computeWin(freshPlayers, roles);
 
     if (win.ended) {
+      const summary = buildEndSummary(win, freshPlayers, roles);
       const txt = win.winner === "TOWN"
         ? `${name} elendi. Vatandaşlar kazandı.`
         : `${name} elendi. Katiller kazandı.`;
@@ -728,7 +788,8 @@
         phase: PHASE.ENDED,
         hostText: txt,
         timerEndsAt: null,
-        revealAtEnd: true
+        revealAtEnd: true,
+        endSummary: summary
       });
       speakTR(txt);
       return;
@@ -886,6 +947,7 @@
     const win = computeWin(freshPlayers, roles);
 
     if (win.ended) {
+      const summary = buildEndSummary(win, freshPlayers, roles);
       const txt = win.winner === "TOWN"
         ? "Oyun bitti. Vatandaşlar kazandı."
         : "Oyun bitti. Katiller kazandı.";
@@ -895,7 +957,8 @@
         hostText: txt,
         timerEndsAt: null,
         awakeRole: null,
-        revealAtEnd: true
+        revealAtEnd: true,
+        endSummary: summary
       });
 
       speakTR(txt);
