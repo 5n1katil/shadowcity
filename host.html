@@ -118,6 +118,8 @@
       <div class="list player-grid" id="alivePlayersList" style="margin-top:8px"></div>
     </div>
     <div style="margin-top:14px">
+      <button class="btn danger" id="btnEndGame">OYUNU BİTİR</button>
+      <div style="height:10px"></div>
       <button class="btn primary hidden" id="btnRestart">YENİDEN BAŞLAT</button>
     </div>
   </div>
@@ -376,6 +378,7 @@
     el("runTopPill").textContent = `${String(phase).toUpperCase()} • GÜN ${day}`;
     el("runText").textContent = state?.hostText || "—";
     renderRestartButton();
+    renderEndButton();
   }
 
   function renderStatusPanel(){
@@ -420,6 +423,13 @@
 
     const show = state?.phase === PHASE.ENDED;
     btn.classList.toggle("hidden", !show);
+    btn.disabled = !isHostController();
+  }
+
+  function renderEndButton(){
+    const btn = el("btnEndGame");
+    if (!btn) return;
+
     btn.disabled = !isHostController();
   }
 
@@ -477,6 +487,20 @@
     lastSpokenPhase = phase;
     const txt = phaseInstruction(phase);
     if (txt) speakTR(txt);
+  }
+
+  async function endGameForAll(){
+    if (!roomCode || !isHostController()) return;
+
+    const msg = "Host oyunu bitirdi. Ana ekrana dönülüyorsunuz.";
+    await update(stateRef(roomCode), {
+      phase: PHASE.ENDED,
+      hostText: msg,
+      timerEndsAt: null,
+      awakeRole: null,
+      endedByHost: true,
+    });
+    speakTR(msg);
   }
 
   function currentPlayerUids(){
@@ -890,6 +914,7 @@
   el("btnCreate").addEventListener("click", createRoom);
   el("btnStart").addEventListener("click", startGame);
   el("btnRestart").addEventListener("click", restartGame);
+  el("btnEndGame").addEventListener("click", endGameForAll);
 
   // init
   ensureAuth().then((u)=>{ myUid = u.uid; showSetup(); });
