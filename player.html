@@ -255,6 +255,8 @@
 
     const me = myPlayer();
     const waiting = state?.phase === PHASE.WAITING;
+    const phase = String(state?.phase || "").toLowerCase();
+    const myRoleRaw = myRole?.role;
 
     if (waiting) {
       el("roleText").textContent = me?.name || "—";
@@ -360,8 +362,8 @@
       return;
     }
 
-    // night: sadece awakeRole = benim rolümse aç
-    if ([PHASE.NIGHT_KILL, PHASE.NIGHT_DOCTOR, PHASE.NIGHT_DETECTIVE].includes(state?.phase)) {
+    // night: sadece ilgili rol uyanık olur
+    if (["night_kill", "night_doctor", "night_detective"].includes(phase)) {
       if (lastPhase === PHASE.DISCUSSION) {
         btnCallVote.textContent = DEFAULT_VOTE_LABEL;
         btnCallVote.disabled = false;
@@ -372,26 +374,31 @@
       }
       show(voteCallStatus, false);
       show(fastNightStatus, false);
-      const awake = state?.awakeRole;
-      if (awake && role === awake) {
+      show(discussionArea, false);
+      show(voteArea, false);
+      show(actionArea, false);
+      setSleep(true);
+
+      if (phase === "night_kill" && myRoleRaw === ROLES.KILLER) {
         show(el("actionArea"), true);
         setSleep(false);
-
-        if (state.phase === PHASE.NIGHT_KILL) {
-          el("actionTitle").textContent = "KATİL — KURBAN SEÇ";
-          el("actionHint").textContent = "Seçimini gönder.";
-          renderActionTargets("kill");
-        } else if (state.phase === PHASE.NIGHT_DOCTOR) {
-          el("actionTitle").textContent = "DOKTOR — KORU";
-          el("actionHint").textContent = "Kendini sınırlı kez koruyabilirsin.";
-          renderActionTargets("protect");
-        } else {
-          el("actionTitle").textContent = "DEDEKTİF — SORGULA";
-          el("actionHint").textContent = "Sonuç gizli mesaj olarak gelir.";
-          renderActionTargets("investigate");
-        }
-      } else {
-        setSleep(true);
+        el("actionTitle").textContent = "KATİL — KURBAN SEÇ";
+        el("actionHint").textContent = "Seçimini gönder.";
+        renderActionTargets("kill");
+      }
+      if (phase === "night_doctor" && myRoleRaw === ROLES.DOCTOR) {
+        show(el("actionArea"), true);
+        setSleep(false);
+        el("actionTitle").textContent = "DOKTOR — KORUMAK İÇİN SEÇ";
+        el("actionHint").textContent = "Kendi kendine koruma hakkın varsa görürsün.";
+        renderActionTargets("protect");
+      }
+      if (phase === "night_detective" && myRoleRaw === ROLES.DETECTIVE) {
+        show(el("actionArea"), true);
+        setSleep(false);
+        el("actionTitle").textContent = "DEDEKTİF — SORUŞTUR";
+        el("actionHint").textContent = "Birini seç, rolünü öğren.";
+        renderActionTargets("investigate");
       }
       lastPhase = state?.phase || null;
       return;
