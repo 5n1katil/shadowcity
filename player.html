@@ -377,6 +377,17 @@
       return;
     }
 
+    if (state?.phase === PHASE.PRE_NIGHT) {
+      show(voteCallStatus, false);
+      show(fastNightStatus, false);
+      show(discussionArea, false);
+      show(voteArea, false);
+      show(actionArea, false);
+      setSleep(false);
+      lastPhase = state?.phase || null;
+      return;
+    }
+
     // night: sadece ilgili rol uyanık olur
     if (["night_kill", "night_doctor", "night_detective"].includes(phase)) {
       if (lastPhase === PHASE.DISCUSSION) {
