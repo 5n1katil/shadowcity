@@ -150,6 +150,7 @@
 
   const el = (id)=>document.getElementById(id);
   const NIGHT_STAGE_MS = 60000;
+  const PRE_NIGHT_BUFFER_MS = 15000;
   let roomCode = null;
   let myUid = null;
   let creatorUid = null;
@@ -186,6 +187,7 @@
     switch(phase){
       case PHASE.DISCUSSION: return "Tartışma zamanı. Süre bitince gece olacak.";
       case PHASE.VOTING: return "Oylama başladı. Telefonundan oy ver.";
+      case PHASE.PRE_NIGHT: return "Oylama tamamlandı. 15 saniye içinde gece olacak.";
       case PHASE.NIGHT_KILL: return "Şimdi herkes gözlerini kapatsın. Gece oluyor. Katiller uyanın. Kurban seçin.";
       case PHASE.NIGHT_DOCTOR: return "Doktor uyan. Birini koru.";
       case PHASE.NIGHT_DETECTIVE: return "Dedektif uyan. Birini sorgula.";
@@ -612,6 +614,11 @@
       return;
     }
 
+    if (phase === PHASE.PRE_NIGHT) {
+      if (ended) return startNightKillAuto("Gece başlıyor.");
+      return;
+    }
+
     if ([PHASE.NIGHT_KILL, PHASE.NIGHT_DOCTOR, PHASE.NIGHT_DETECTIVE].includes(phase)) {
       const roles = await readSecretRoles();
       rolesByUid = roles || {};
@@ -751,12 +758,14 @@
         set(requestVoteStartRef(roomCode), null),
       ]);
 
+      const hostText = `${message} 15 saniye sonra gece olacak.`;
       await update(stateRef(roomCode), {
-        phase: PHASE.NIGHT_KILL,
-        hostText: phaseInstruction(PHASE.NIGHT_KILL),
-        timerEndsAt: nowMs() + NIGHT_STAGE_MS,
-        awakeRole: ROLES.KILLER
+        phase: PHASE.PRE_NIGHT,
+        hostText,
+        timerEndsAt: nowMs() + PRE_NIGHT_BUFFER_MS,
+        awakeRole: null
       });
+      speakTR(hostText);
       return;
     }
 
@@ -771,6 +780,9 @@
       reason: "ELIMINATED"
     });
     await update(playerRef(roomCode, best), { alive: false, eliminatedAt: nowMs() });
+
+    const eliminationAnnouncement = `${name} oylama sonucu elendi. 15 saniye sonra gece olacak.`;
+    speakTR(eliminationAnnouncement);
 
     const roles = await readSecretRoles();
     const playersSnap = await get(playersRef(roomCode));
@@ -804,10 +816,10 @@
 
     // geceye geç
     await update(stateRef(roomCode), {
-      phase: PHASE.NIGHT_KILL,
-      hostText: `${name} elendi. ${phaseInstruction(PHASE.NIGHT_KILL)}`,
-      timerEndsAt: nowMs() + NIGHT_STAGE_MS,
-      awakeRole: ROLES.KILLER
+      phase: PHASE.PRE_NIGHT,
+      hostText: eliminationAnnouncement,
+      timerEndsAt: nowMs() + PRE_NIGHT_BUFFER_MS,
+      awakeRole: null
     });
   }
 
