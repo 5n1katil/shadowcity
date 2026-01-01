@@ -19,6 +19,8 @@ export const PHASE = {
   DISCUSSION: "discussion",
   VOTING: "voting",
 
+  PRE_NIGHT: "pre_night",
+
   NIGHT_KILL: "night_kill",
   NIGHT_DOCTOR: "night_doctor",
   NIGHT_DETECTIVE: "night_detective",
