@@ -117,10 +117,22 @@
       <div class="label">Yaşayan Oyuncular</div>
       <div class="chip-list" id="alivePlayersList" style="margin-top:8px"></div>
       <div class="label" id="endSummaryHeader" style="margin-top:10px">Oyun Sonu</div>
-      <div class="sub hidden" id="endSummaryPanel">
-        <div style="margin-top:4px"><b>Kazananlar:</b> <span id="endWinnersText">—</span></div>
-        <div style="margin-top:4px"><b>Katiller:</b> <span id="endKillersText">—</span></div>
-        <div style="margin-top:4px"><b>Tüm Oyuncular:</b> <span id="endAllText">—</span></div>
+      <div class="sub hidden end-summary" id="endSummaryPanel">
+        <div class="end-detail" id="endDetailText">—</div>
+        <div class="end-lists">
+          <div class="end-group">
+            <div class="label">Kazananlar</div>
+            <div class="end-pill-row" id="endWinnersList"></div>
+          </div>
+          <div class="end-group">
+            <div class="label">Kaybedenler</div>
+            <div class="end-pill-row" id="endLosersList"></div>
+          </div>
+        </div>
+        <div class="end-roles">
+          <div><b>Katiller:</b> <span id="endKillersText">—</span></div>
+          <div><b>Tüm Oyuncular:</b> <span id="endAllText">—</span></div>
+        </div>
       </div>
     </div>
     <div style="margin-top:14px">
@@ -213,20 +225,41 @@
     return `${name} (${roleText})`;
   }
 
-  function buildEndSummary(win, playersObj, rolesObj){
+  function buildEndSummary(win, playersObj, rolesObj, ending){
     const entries = Object.entries(playersObj || {}).filter(([, p]) => p && !p.isHost);
     const killerUids = entries.filter(([uid]) => rolesObj?.[uid]?.role === ROLES.KILLER).map(([uid]) => uid);
     const townUids = entries.filter(([uid]) => rolesObj?.[uid]?.role !== ROLES.KILLER).map(([uid]) => uid);
 
+    const winnerSet = new Set((win?.winner === "KILLERS" ? killerUids : townUids));
     const winners = (win?.winner === "KILLERS" ? killerUids : townUids)
       .map((uid) => formatNameWithRole(uid, playersObj, rolesObj));
+    const losers = entries
+      .filter(([uid]) => !winnerSet.has(uid))
+      .map(([uid]) => formatNameWithRole(uid, playersObj, rolesObj));
     const killers = killerUids.map((uid) => formatNameWithRole(uid, playersObj, rolesObj));
     const all = entries.map(([uid]) => formatNameWithRole(uid, playersObj, rolesObj));
+
+    const endType = ending?.type;
+    const targetName = ending?.targetName || "bir oyuncu";
+    let detailText = "Oyun sona erdi.";
+
+    if (endType === "NIGHT" && ending?.targetUid) {
+      detailText = `Katiller gece ${targetName} isimli oyuncuyu öldürerek üstünlüğü aldı.`;
+    } else if (endType === "VOTE" && ending?.targetUid) {
+      detailText = `${targetName} oylama ile elendi ve bu hamle oyunun sonunu getirdi.`;
+    } else if (win?.winner === "TOWN") {
+      detailText = "Vatandaşlar katilleri etkisiz hale getirerek kazandı.";
+    } else if (win?.winner === "KILLERS") {
+      detailText = "Katiller kritik hamleyle oyunu bitirdi.";
+    }
 
     return {
       winnersText: winners.length ? winners.join(", ") : "—",
       killersText: killers.length ? killers.join(", ") : "—",
       allText: all.length ? all.join(", ") : "—",
+      winnersList: winners,
+      losersList: losers,
+      detailText,
     };
   }
 
@@ -538,11 +571,25 @@
     if (state?.phase !== PHASE.ENDED) return;
 
     const summary = state?.endSummary || {};
-    const winnersEl = el("endWinnersText");
+    const winnersRow = el("endWinnersList");
+    const losersRow = el("endLosersList");
+    const detailEl = el("endDetailText");
     const killersEl = el("endKillersText");
     const allEl = el("endAllText");
 
-    if (winnersEl) winnersEl.textContent = summary.winnersText || "—";
+    const renderRow = (rowEl, items)=>{
+      if (!rowEl) return;
+      const arr = Array.isArray(items) ? items : [];
+      if (!arr.length) { rowEl.innerHTML = `<div class="sub">—</div>`; return; }
+      rowEl.innerHTML = arr.map((txt, idx)=>`
+        <div class="end-pill" style="animation-delay:${idx * 40}ms">${escapeHtml(txt)}</div>
+      `).join("");
+    };
+
+    renderRow(winnersRow, summary.winnersList);
+    renderRow(losersRow, summary.losersList);
+
+    if (detailEl) detailEl.textContent = summary.detailText || "—";
     if (killersEl) killersEl.textContent = summary.killersText || "—";
     if (allEl) allEl.textContent = summary.allText || "—";
   }
@@ -791,7 +838,7 @@
     const win = computeWin(freshPlayers, roles);
 
     if (win.ended) {
-      const summary = buildEndSummary(win, freshPlayers, roles);
+      const summary = buildEndSummary(win, freshPlayers, roles, { type: "VOTE", targetUid: best, targetName: name });
       const txt = win.winner === "TOWN"
         ? `${name} elendi. Vatandaşlar kazandı.`
         : `${name} elendi. Katiller kazandı.`;
@@ -959,7 +1006,7 @@
     const win = computeWin(freshPlayers, roles);
 
     if (win.ended) {
-      const summary = buildEndSummary(win, freshPlayers, roles);
+      const summary = buildEndSummary(win, freshPlayers, roles, { type: "NIGHT", targetUid: deadUid, targetName: deadName, reason: nightRes.reason });
       const txt = win.winner === "TOWN"
         ? "Oyun bitti. Vatandaşlar kazandı."
         : "Oyun bitti. Katiller kazandı.";
